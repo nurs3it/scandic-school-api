@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
+import { Resend } from 'resend';
 
 export interface ApplicationNotificationData {
   id: number;
@@ -24,18 +24,10 @@ const LANG_LABELS: Record<string, string> = {
 @Injectable()
 export class MailService {
   private readonly logger = new Logger(MailService.name);
-  private transporter: nodemailer.Transporter;
+  private resend: Resend;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
+    this.resend = new Resend(process.env.RESEND_API_KEY);
   }
 
   async sendApplicationNotification(
@@ -43,8 +35,8 @@ export class MailService {
     data: ApplicationNotificationData,
   ): Promise<void> {
     if (!recipients.length) return;
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      this.logger.warn('SMTP credentials not configured, skipping email notification');
+    if (!process.env.RESEND_API_KEY) {
+      this.logger.warn('RESEND_API_KEY not configured, skipping email notification');
       return;
     }
 
@@ -173,9 +165,9 @@ export class MailService {
 </html>`;
 
     try {
-      await this.transporter.sendMail({
-        from: `"Scandic School" <${process.env.SMTP_USER}>`,
-        to: recipients.join(', '),
+      await this.resend.emails.send({
+        from: 'Scandic School <onboarding@resend.dev>',
+        to: recipients,
         subject: `📋 Новая заявка #${data.id} — ${data.parentName}`,
         html,
       });
