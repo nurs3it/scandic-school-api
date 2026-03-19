@@ -16,3 +16,9 @@ model Application {
   parentPhone String
   createdAt   DateTime @default(now())
 }
+
+model NotificationEmail {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  createdAt DateTime @default(now())
+}

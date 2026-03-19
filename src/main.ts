@@ -14,8 +14,8 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // allow requests with no origin (curl, Swagger, server-to-server)
-      if (!origin || allowedOrigins.includes(origin)) {
+      // allow requests with no origin (curl, Swagger, server-to-server, same-origin HTML)
+      if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
         callback(null, true);
       } else {
         callback(new Error(`CORS: origin ${origin} not allowed`));
