@@ -3,14 +3,13 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npx prisma generate && npm run build
+RUN npx prisma generate && npm run build && ls -la dist/src/
 
 FROM node:20-alpine
 WORKDIR /app
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY package*.json ./
 EXPOSE 3001
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
