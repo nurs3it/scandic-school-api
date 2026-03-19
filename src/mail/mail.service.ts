@@ -166,7 +166,7 @@ export class MailService {
 
     try {
       await this.resend.emails.send({
-        from: 'Scandic School <onboarding@resend.dev>',
+        from: 'Scandic School <noreply@scandicschools.com>',
         to: recipients,
         subject: `📋 Новая заявка #${data.id} — ${data.parentName}`,
         html,
