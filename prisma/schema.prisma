@@ -1,0 +1,18 @@
+// This is your Prisma schema file
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Application {
+  id          Int      @id @default(autoincrement())
+  parentName  String
+  grade       String
+  language    String
+  parentPhone String
+  createdAt   DateTime @default(now())
+}
