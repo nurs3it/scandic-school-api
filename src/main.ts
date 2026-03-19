@@ -8,18 +8,24 @@ const cookieParser = require('cookie-parser') as typeof import('cookie-parser');
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  const rawOrigins = process.env.FRONTEND_URL || '';
+  const allowedOrigins = rawOrigins
     .split(',')
-    .map((o) => o.trim());
+    .map((o) => o.trim())
+    .filter(Boolean);
 
   app.enableCors({
     origin: (origin, callback) => {
-      // allow requests with no origin (curl, Swagger, server-to-server, same-origin HTML)
-      if (!origin || allowedOrigins.includes(origin) || origin.startsWith('http://localhost:')) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS: origin ${origin} not allowed`));
+      // no origin = curl / Swagger / server-to-server
+      if (!origin) return callback(null, true);
+      // always allow localhost for local dev
+      if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+        return callback(null, true);
       }
+      // if no explicit allowlist configured — allow all https origins
+      if (allowedOrigins.length === 0) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
     },
     credentials: true,
   });
