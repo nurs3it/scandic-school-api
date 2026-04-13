@@ -27,7 +27,9 @@ export class MailService {
   private resend: Resend;
 
   constructor() {
-    this.resend = new Resend(process.env.RESEND_API_KEY);
+    if (process.env.RESEND_API_KEY) {
+      this.resend = new Resend(process.env.RESEND_API_KEY);
+    }
   }
 
   async sendApplicationNotification(
@@ -35,7 +37,7 @@ export class MailService {
     data: ApplicationNotificationData,
   ): Promise<void> {
     if (!recipients.length) return;
-    if (!process.env.RESEND_API_KEY) {
+    if (!this.resend) {
       this.logger.warn('RESEND_API_KEY not configured, skipping email notification');
       return;
     }

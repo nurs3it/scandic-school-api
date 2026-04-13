@@ -163,6 +163,9 @@ function dashboardPage(applications: Array<{
         <td><span class="badge grade">${GRADE_LABELS[a.grade] ?? a.grade}</span></td>
         <td><span class="badge lang-${a.language}">${LANG_LABELS[a.language] ?? a.language}</span></td>
         <td><span class="date">${dateStr}</span><br/><span class="time">${timeStr}</span></td>
+        <td>
+          <button type="button" class="del-btn" onclick="openDeleteModal(${a.id}, '${escHtml(a.parentName)}')">✕ Удалить</button>
+        </td>
       </tr>`;
   }).join('');
 
@@ -256,6 +259,18 @@ function dashboardPage(applications: Array<{
     .lang-russian { background: #dbeafe; color: #1e40af; }
     .date { font-size: 13px; color: #374151; }
     .time { font-size: 11px; color: #94a3b8; }
+    .del-btn {
+      padding: 5px 12px;
+      background: #fff;
+      border: 1.5px solid #fecaca;
+      border-radius: 6px;
+      color: #dc2626;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .del-btn:hover { background: #fef2f2; }
     .empty {
       text-align: center;
       padding: 60px 20px;
@@ -263,6 +278,53 @@ function dashboardPage(applications: Array<{
       font-size: 14px;
     }
     .empty-icon { font-size: 40px; display: block; margin-bottom: 12px; }
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 12px;
+      padding: 32px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    .modal-icon { font-size: 48px; margin-bottom: 16px; }
+    .modal h2 { font-size: 20px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
+    .modal p { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+    .modal-actions {
+      display: flex; gap: 12px;
+    }
+    .modal-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: 1.5px solid;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .modal-btn-cancel {
+      background: #f8fafc;
+      border-color: #e2e8f0;
+      color: #374151;
+    }
+    .modal-btn-cancel:hover { background: #f1f5f9; }
+    .modal-btn-delete {
+      background: #dc2626;
+      border-color: #dc2626;
+      color: #fff;
+    }
+    .modal-btn-delete:hover { background: #b91c1c; }
   </style>
 </head>
 <body>
@@ -324,6 +386,7 @@ function dashboardPage(applications: Array<{
             <th>Класс</th>
             <th>Язык</th>
             <th>Дата</th>
+            <th>Действия</th>
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -332,6 +395,51 @@ function dashboardPage(applications: Array<{
     </div>
   </main>
 </div>
+
+<!-- Delete Modal -->
+<div id="deleteModal" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-icon">⚠️</div>
+    <h2>Удалить заявку?</h2>
+    <p id="modalMessage">Это действие невозможно отменить.</p>
+    <div class="modal-actions">
+      <button type="button" class="modal-btn modal-btn-cancel" onclick="closeDeleteModal()">Отмена</button>
+      <button type="button" class="modal-btn modal-btn-delete" onclick="confirmDelete()">Удалить</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let deleteApplicationId = null;
+
+  function openDeleteModal(id, name) {
+    deleteApplicationId = id;
+    document.getElementById('modalMessage').textContent = \`Заявка от \${name} будет удалена. Это действие невозможно отменить.\`;
+    document.getElementById('deleteModal').classList.add('active');
+  }
+
+  function closeDeleteModal() {
+    deleteApplicationId = null;
+    document.getElementById('deleteModal').classList.remove('active');
+  }
+
+  function confirmDelete() {
+    if (deleteApplicationId) {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = \`/admin/applications/\${deleteApplicationId}/delete\`;
+      document.body.appendChild(form);
+      form.submit();
+    }
+  }
+
+  // Close modal on overlay click
+  document.getElementById('deleteModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeDeleteModal();
+    }
+  });
+</script>
 </body>
 </html>`;
 }
@@ -698,5 +806,17 @@ export class AdminController {
     if (!isAuthenticated(req)) return res.redirect('/admin/login');
     await this.prisma.notificationEmail.delete({ where: { id } });
     return res.redirect('/admin/emails');
+  }
+
+  @Post('applications/:id/delete')
+  @HttpCode(302)
+  async applicationDelete(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    if (!isAuthenticated(req)) return res.redirect('/admin/login');
+    await this.prisma.application.delete({ where: { id } });
+    return res.redirect('/admin');
   }
 }
