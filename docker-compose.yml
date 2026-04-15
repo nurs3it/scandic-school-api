@@ -1,0 +1,32 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      PORT: 3001
+      ADMIN_USER: ${ADMIN_USER}
+      ADMIN_PASS: ${ADMIN_PASS}
+      ADMIN_URL: ${ADMIN_URL}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:3000}
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../scandic-school
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      # Для браузера (клиентский код) — публичный адрес бэкенда
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-https://admin.scandicschools.com}
+      # Для серверного proxy-роута — внутренний docker-адрес
+      NESTJS_API_URL: http://api:3001
+    depends_on:
+      - api
+    restart: unless-stopped

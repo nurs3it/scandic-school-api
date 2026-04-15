@@ -3,3 +3,7 @@ dist
 .env
 .idea
 /generated/prisma
+.claude
+.claude-flow
+docs
+docs/

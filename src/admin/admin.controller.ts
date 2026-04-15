@@ -448,7 +448,7 @@ function escHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-function sidebarHtml(active: 'applications' | 'emails') {
+function sidebarHtml(active: 'applications' | 'emails' | 'instagram') {
   return `
   <aside class="sidebar">
     <div class="sidebar-logo">
@@ -459,6 +459,7 @@ function sidebarHtml(active: 'applications' | 'emails') {
     <nav class="nav">
       <a href="/admin" class="nav-item ${active === 'applications' ? 'active' : ''}">📋 Заявки на зачисление</a>
       <a href="/admin/emails" class="nav-item ${active === 'emails' ? 'active' : ''}">✉️ Почты для уведомлений</a>
+      <a href="/admin/instagram" class="nav-item ${active === 'instagram' ? 'active' : ''}">📸 Instagram посты</a>
     </nav>
     <div class="sidebar-footer">
       <a href="/admin/logout" class="logout">← Выйти</a>
@@ -715,6 +716,286 @@ function emailsPage(
 </html>`;
 }
 
+function instagramPage(
+  posts: Array<{ id: number; url: string; order: number; isActive: boolean }>,
+  flash?: { type: 'success' | 'error'; message: string },
+) {
+  const rows = posts.map(p => `
+    <tr draggable="true" data-id="${p.id}">
+      <td class="drag-cell"><span class="drag-handle" title="Перетащить для изменения порядка">⠿</span></td>
+      <td><span class="url-text">${escHtml(p.url)}</span></td>
+      <td><span class="order-badge">${p.order}</span></td>
+      <td>
+        <form method="POST" action="/admin/instagram/${p.id}/toggle" style="margin:0;display:inline;">
+          <input type="hidden" name="isActive" value="${p.isActive ? 'false' : 'true'}">
+          <button type="submit" class="status-btn ${p.isActive ? 'status-active' : 'status-inactive'}">
+            ${p.isActive ? '✓ Активен' : '✕ Неактивен'}
+          </button>
+        </form>
+      </td>
+      <td>
+        <form method="POST" action="/admin/instagram/${p.id}/delete" style="margin:0;display:inline;">
+          <button type="submit" class="del-btn" onclick="return confirm('Удалить пост?')">✕ Удалить</button>
+        </form>
+      </td>
+    </tr>
+  `).join('');
+
+  const flashHtml = flash
+    ? `<div class="flash flash-${flash.type}">${flash.type === 'success' ? '✓' : '⚠'} ${escHtml(flash.message)}</div>`
+    : '';
+
+  return `<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scandic Admin — Instagram посты</title>
+  <style>
+    ${BASE_STYLES}
+    .add-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      margin-bottom: 24px;
+    }
+    .add-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+    .add-form { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+    .field { flex: 1; min-width: 240px; }
+    label { font-size: 13px; font-weight: 600; color: #374151; display: block; margin-bottom: 6px; }
+    input[type="url"], input[type="text"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #f4a724; box-shadow: 0 0 0 3px rgba(244,167,36,0.15); }
+    .add-btn {
+      padding: 10px 20px;
+      background: linear-gradient(135deg, #f4a724, #e8890a);
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+    .add-btn:hover { opacity: 0.9; }
+    .table-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    .table-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .table-header h3 { font-size: 15px; font-weight: 700; }
+    .count-badge {
+      background: #f1f5f9; color: #64748b;
+      font-size: 12px; font-weight: 600;
+      padding: 3px 10px; border-radius: 20px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #f8fafc; }
+    th {
+      padding: 12px 16px; text-align: left;
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: #64748b; border-bottom: 1px solid #f1f5f9;
+    }
+    td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafbfc; }
+    .url-text { font-family: monospace; font-size: 13px; color: #374151; word-break: break-all; }
+    .order-badge {
+      display: inline-block;
+      background: #f1f5f9; color: #64748b;
+      font-size: 12px; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+    }
+    .status-btn {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .status-active { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .status-active:hover { opacity: 0.8; }
+    .status-inactive { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .status-inactive:hover { opacity: 0.8; }
+    .del-btn {
+      padding: 5px 12px;
+      background: #fff;
+      border: 1.5px solid #fecaca;
+      border-radius: 6px;
+      color: #dc2626;
+      font-size: 12px; font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .del-btn:hover { background: #fef2f2; }
+    .empty { text-align: center; padding: 48px 20px; color: #94a3b8; font-size: 14px; }
+    .empty-icon { font-size: 36px; display: block; margin-bottom: 10px; }
+    .flash {
+      padding: 12px 16px; border-radius: 8px;
+      font-size: 13px; font-weight: 600; margin-bottom: 20px;
+    }
+    .flash-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+    .flash-error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .drag-cell { width: 40px; }
+    .drag-handle {
+      display: inline-block;
+      cursor: grab;
+      color: #cbd5e1;
+      font-size: 18px;
+      line-height: 1;
+      user-select: none;
+      padding: 2px 4px;
+      transition: color 0.15s;
+    }
+    .drag-handle:hover { color: #94a3b8; }
+    tr[draggable="true"] { transition: opacity 0.15s; }
+    tr.dragging { opacity: 0.4; }
+    tr.drag-over td { background: #fef9ec !important; border-top: 2px solid #f4a724; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  ${sidebarHtml('instagram')}
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <h1>Instagram посты</h1>
+        <p>Управление постами, отображаемыми на сайте</p>
+      </div>
+    </div>
+
+    ${flashHtml}
+
+    <div class="add-card">
+      <h3>Добавить новый пост</h3>
+      <form method="POST" action="/admin/instagram" class="add-form">
+        <div class="field">
+          <label>URL поста</label>
+          <input type="url" name="url" placeholder="https://www.instagram.com/p/..." required />
+        </div>
+        <button type="submit" class="add-btn">+ Добавить</button>
+      </form>
+    </div>
+
+    <div class="table-card">
+      <div class="table-header">
+        <h3>Список постов</h3>
+        <span class="count-badge">${posts.length} постов</span>
+      </div>
+      ${posts.length === 0 ? `
+        <div class="empty">
+          <span class="empty-icon">📸</span>
+          Пока нет добавленных постов. Добавьте первый выше.
+        </div>
+      ` : `
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px;"></th>
+            <th>URL</th>
+            <th style="width:100px;">Порядок</th>
+            <th style="width:150px;">Статус</th>
+            <th style="width:100px;">Действие</th>
+          </tr>
+        </thead>
+        <tbody id="sortable-tbody">${rows}</tbody>
+      </table>
+      `}
+    </div>
+  </main>
+</div>
+
+<form id="reorder-form" method="POST" action="/admin/instagram/reorder" style="display:none;">
+  <input type="hidden" id="reorder-ids" name="ids" value="" />
+</form>
+
+<script>
+  const tbody = document.getElementById('sortable-tbody');
+  if (tbody) {
+    let dragSrc = null;
+
+    tbody.addEventListener('dragstart', function(e) {
+      dragSrc = e.target.closest('tr');
+      if (!dragSrc) return;
+      dragSrc.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    });
+
+    tbody.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      const target = e.target.closest('tr');
+      if (target && target !== dragSrc) {
+        tbody.querySelectorAll('tr').forEach(r => r.classList.remove('drag-over'));
+        target.classList.add('drag-over');
+      }
+    });
+
+    tbody.addEventListener('dragleave', function(e) {
+      const target = e.target.closest('tr');
+      if (target) target.classList.remove('drag-over');
+    });
+
+    tbody.addEventListener('drop', function(e) {
+      e.preventDefault();
+      const target = e.target.closest('tr');
+      if (!target || target === dragSrc) return;
+
+      const rows = Array.from(tbody.querySelectorAll('tr'));
+      const srcIdx = rows.indexOf(dragSrc);
+      const tgtIdx = rows.indexOf(target);
+
+      if (srcIdx < tgtIdx) {
+        target.after(dragSrc);
+      } else {
+        target.before(dragSrc);
+      }
+
+      target.classList.remove('drag-over');
+      saveOrder();
+    });
+
+    tbody.addEventListener('dragend', function() {
+      tbody.querySelectorAll('tr').forEach(r => {
+        r.classList.remove('dragging', 'drag-over');
+      });
+      dragSrc = null;
+    });
+
+    function saveOrder() {
+      const ids = Array.from(tbody.querySelectorAll('tr[data-id]'))
+        .map(r => r.getAttribute('data-id'))
+        .join(',');
+      document.getElementById('reorder-ids').value = ids;
+      // Update order badges visually
+      tbody.querySelectorAll('tr[data-id]').forEach((r, i) => {
+        const badge = r.querySelector('.order-badge');
+        if (badge) badge.textContent = String(i);
+      });
+      document.getElementById('reorder-form').submit();
+    }
+  }
+</script>
+</body>
+</html>`;
+}
+
 @ApiExcludeController()
 @Controller('admin')
 export class AdminController {
@@ -806,6 +1087,83 @@ export class AdminController {
     if (!isAuthenticated(req)) return res.redirect('/admin/login');
     await this.prisma.notificationEmail.delete({ where: { id } });
     return res.redirect('/admin/emails');
+  }
+
+  @Get('instagram')
+  async instagramGet(@Req() req: Request, @Res() res: Response) {
+    if (!isAuthenticated(req)) return res.redirect('/admin/login');
+    const instagram = await this.prisma.instagramPost.findMany({
+      orderBy: { order: 'asc' },
+    });
+    return res.send(instagramPage(instagram));
+  }
+
+  @Post('instagram/reorder')
+  @HttpCode(302)
+  async instagramReorder(
+    @Req() req: Request,
+    @Body() body: { ids: string },
+    @Res() res: Response,
+  ) {
+    if (!isAuthenticated(req)) return res.redirect('/admin/login');
+    const ids = (body.ids || '').split(',').map(Number).filter(Boolean);
+    await Promise.all(
+      ids.map((id, index) =>
+        this.prisma.instagramPost.update({ where: { id }, data: { order: index } }),
+      ),
+    );
+    return res.redirect('/admin/instagram');
+  }
+
+  @Post('instagram')
+  @HttpCode(302)
+  async instagramPost(
+    @Req() req: Request,
+    @Body() body: { url: string },
+    @Res() res: Response,
+  ) {
+    if (!isAuthenticated(req)) return res.redirect('/admin/login');
+    const url = (body.url || '').trim();
+    if (!url) return res.redirect('/admin/instagram');
+    try {
+      const maxPost = await this.prisma.instagramPost.findFirst({
+        orderBy: { order: 'desc' },
+      });
+      const nextOrder = (maxPost?.order ?? -1) + 1;
+      await this.prisma.instagramPost.create({
+        data: { url, order: nextOrder, isActive: true },
+      });
+    } catch (e) {
+      console.error('Instagram create error:', e);
+    }
+    return res.redirect('/admin/instagram');
+  }
+
+  @Post('instagram/:id/toggle')
+  @HttpCode(302)
+  async instagramToggle(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { isActive: string },
+    @Res() res: Response,
+  ) {
+    if (!isAuthenticated(req)) return res.redirect('/admin/login');
+    await this.prisma.instagramPost
+      .update({ where: { id }, data: { isActive: body.isActive === 'true' } })
+      .catch(() => null);
+    return res.redirect('/admin/instagram');
+  }
+
+  @Post('instagram/:id/delete')
+  @HttpCode(302)
+  async instagramDelete(
+    @Req() req: Request,
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    if (!isAuthenticated(req)) return res.redirect('/admin/login');
+    await this.prisma.instagramPost.delete({ where: { id } }).catch(() => null);
+    return res.redirect('/admin/instagram');
   }
 
   @Post('applications/:id/delete')

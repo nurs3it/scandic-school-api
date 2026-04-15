@@ -22,3 +22,11 @@ model NotificationEmail {
   email     String   @unique
   createdAt DateTime @default(now())
 }
+
+model InstagramPost {
+  id        Int      @id @default(autoincrement())
+  url       String
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
