@@ -181,6 +181,93 @@ export class MailService {
     }
   }
 
+  async sendContactNotification(
+    recipients: string[],
+    data: { id: number; name: string; email: string; phone?: string | null; message: string; createdAt: Date },
+  ): Promise<void> {
+    if (!recipients.length) return;
+    if (!this.resend) {
+      this.logger.warn('RESEND_API_KEY not configured, skipping contact notification');
+      return;
+    }
+
+    const adminUrl = process.env.ADMIN_URL || 'http://localhost:3001/admin';
+    const dateStr = new Date(data.createdAt).toLocaleString('ru-RU', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+
+    const html = `<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.08);">
+        <tr><td style="background:linear-gradient(135deg,#0f172a,#1e3a5f);padding:32px 40px;text-align:center;">
+          <div style="display:inline-block;width:56px;height:56px;background:linear-gradient(135deg,#f4a724,#e8890a);border-radius:14px;line-height:56px;font-size:26px;margin-bottom:12px;">✉️</div>
+          <h1 style="color:#fff;margin:0;font-size:20px;font-weight:700;">Scandic School</h1>
+          <p style="color:#94a3b8;margin:4px 0 0;font-size:13px;">Панель администратора</p>
+        </td></tr>
+        <tr><td style="background:#dbeafe;border-bottom:1px solid #bfdbfe;padding:14px 40px;">
+          <p style="margin:0;font-size:14px;font-weight:600;color:#1e40af;">💬 Новое сообщение с сайта</p>
+        </td></tr>
+        <tr><td style="padding:32px 40px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;margin-bottom:28px;">
+            <tr><td style="padding:20px 24px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">
+                  <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Имя</span><br/>
+                  <span style="font-size:15px;color:#0f172a;">${escHtml(data.name)}</span>
+                </td></tr>
+                <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">
+                  <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Email</span><br/>
+                  <span style="font-size:15px;color:#0f172a;">${escHtml(data.email)}</span>
+                </td></tr>
+                ${data.phone ? `<tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">
+                  <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Телефон</span><br/>
+                  <span style="font-size:15px;font-family:monospace;color:#0f172a;">${escHtml(data.phone)}</span>
+                </td></tr>` : ''}
+                <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">
+                  <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Сообщение</span><br/>
+                  <span style="font-size:15px;color:#0f172a;white-space:pre-wrap;">${escHtml(data.message)}</span>
+                </td></tr>
+                <tr><td style="padding:8px 0;">
+                  <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Дата</span><br/>
+                  <span style="font-size:15px;color:#0f172a;">${dateStr}</span>
+                </td></tr>
+              </table>
+            </td></tr>
+          </table>
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td align="center">
+              <a href="${adminUrl}" style="display:inline-block;padding:14px 32px;background:linear-gradient(135deg,#f4a724,#e8890a);color:#0f172a;font-size:15px;font-weight:700;text-decoration:none;border-radius:10px;">
+                Открыть панель администратора
+              </a>
+            </td></tr>
+          </table>
+        </td></tr>
+        <tr><td style="padding:20px 40px;border-top:1px solid #f1f5f9;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#94a3b8;">Это автоматическое уведомление от системы Scandic School.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+    try {
+      await this.resend.emails.send({
+        from: 'Scandic School <noreply@scandicschools.com>',
+        to: recipients,
+        subject: `💬 Сообщение #${data.id} — ${data.name}`,
+        html,
+      });
+      this.logger.log(`Contact notification sent to ${recipients.length} recipient(s)`);
+    } catch (err) {
+      this.logger.error('Failed to send contact notification', err);
+    }
+  }
+
   async sendOrderNotification(
     recipients: string[],
     orderId: number,
