@@ -30,3 +30,56 @@ model InstagramPost {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
 }
+
+enum OrderStatus {
+  NEW
+  IN_PROGRESS
+  REJECTED
+  SOLD
+}
+
+model MerchOrder {
+  id            Int         @id @default(autoincrement())
+  parentName    String
+  childrenNames String
+  phone         String
+  items         Json
+  total         Int
+  status        OrderStatus @default(NEW)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+}
+
+model News {
+  id             Int      @id @default(autoincrement())
+  slug           String   @unique
+  title          String
+  description    String
+  bannerUrl      String
+  content        String
+  author         String
+  tags           String[] @default([])
+  publishedAt    DateTime
+  readingMinutes Int
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([isActive, publishedAt])
+}
+
+model MerchItem {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String
+  price       Int
+  image       String
+  images      String[] @default([])
+  category    String?
+  inStock     Boolean  @default(true)
+  sizes       String[] @default([])
+  colors      String[] @default([])
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

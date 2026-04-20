@@ -10,7 +10,13 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiOkResponse, ApiCreatedResponse, ApiNoContentResponse } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiOkResponse,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+} from '@nestjs/swagger';
 import { InstagramPostsService } from './instagram-posts.service';
 import { CreateInstagramPostDto } from './dto/create-instagram-post.dto';
 import { UpdateInstagramPostDto } from './dto/update-instagram-post.dto';
@@ -21,7 +27,9 @@ export class InstagramPostsController {
   constructor(private readonly service: InstagramPostsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List active instagram posts ordered by order field' })
+  @ApiOperation({
+    summary: 'List active instagram posts ordered by order field',
+  })
   @ApiOkResponse({ description: 'List of instagram posts' })
   findAll() {
     return this.service.findAll();
@@ -38,7 +46,10 @@ export class InstagramPostsController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update instagram post' })
   @ApiOkResponse({ description: 'Instagram post updated' })
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateInstagramPostDto) {
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateInstagramPostDto,
+  ) {
     return this.service.update(id, dto);
   }
 

@@ -38,7 +38,9 @@ export class MailService {
   ): Promise<void> {
     if (!recipients.length) return;
     if (!this.resend) {
-      this.logger.warn('RESEND_API_KEY not configured, skipping email notification');
+      this.logger.warn(
+        'RESEND_API_KEY not configured, skipping email notification',
+      );
       return;
     }
 
@@ -178,8 +180,41 @@ export class MailService {
       this.logger.error('Failed to send email notification', err);
     }
   }
+
+  async sendOrderNotification(
+    recipients: string[],
+    orderId: number,
+    parentName: string,
+    html: string,
+  ): Promise<void> {
+    if (!recipients.length) return;
+    if (!this.resend) {
+      this.logger.warn(
+        'RESEND_API_KEY not configured, skipping order notification',
+      );
+      return;
+    }
+
+    try {
+      await this.resend.emails.send({
+        from: 'Scandic School <noreply@scandicschools.com>',
+        to: recipients,
+        subject: `🛒 Новый заказ мерча #${orderId} — ${parentName}`,
+        html,
+      });
+      this.logger.log(
+        `Order notification sent to ${recipients.length} recipient(s)`,
+      );
+    } catch (err) {
+      this.logger.error('Failed to send order notification', err);
+    }
+  }
 }
 
 function escHtml(str: string): string {
-  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
