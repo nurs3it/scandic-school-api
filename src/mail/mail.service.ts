@@ -183,17 +183,30 @@ export class MailService {
 
   async sendContactNotification(
     recipients: string[],
-    data: { id: number; name: string; email: string; phone?: string | null; message: string; createdAt: Date },
+    data: {
+      id: number;
+      name: string;
+      email: string;
+      phone?: string | null;
+      message: string;
+      createdAt: Date;
+    },
   ): Promise<void> {
     if (!recipients.length) return;
     if (!this.resend) {
-      this.logger.warn('RESEND_API_KEY not configured, skipping contact notification');
+      this.logger.warn(
+        'RESEND_API_KEY not configured, skipping contact notification',
+      );
       return;
     }
 
     const adminUrl = process.env.ADMIN_URL || 'http://localhost:3001/admin';
     const dateStr = new Date(data.createdAt).toLocaleString('ru-RU', {
-      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     });
 
     const html = `<!DOCTYPE html>
@@ -223,10 +236,14 @@ export class MailService {
                   <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Email</span><br/>
                   <span style="font-size:15px;color:#0f172a;">${escHtml(data.email)}</span>
                 </td></tr>
-                ${data.phone ? `<tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">
+                ${
+                  data.phone
+                    ? `<tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">
                   <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Телефон</span><br/>
                   <span style="font-size:15px;font-family:monospace;color:#0f172a;">${escHtml(data.phone)}</span>
-                </td></tr>` : ''}
+                </td></tr>`
+                    : ''
+                }
                 <tr><td style="padding:8px 0;border-bottom:1px solid #f1f5f9;">
                   <span style="font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.05em;">Сообщение</span><br/>
                   <span style="font-size:15px;color:#0f172a;white-space:pre-wrap;">${escHtml(data.message)}</span>
@@ -262,7 +279,9 @@ export class MailService {
         subject: `💬 Сообщение #${data.id} — ${data.name}`,
         html,
       });
-      this.logger.log(`Contact notification sent to ${recipients.length} recipient(s)`);
+      this.logger.log(
+        `Contact notification sent to ${recipients.length} recipient(s)`,
+      );
     } catch (err) {
       this.logger.error('Failed to send contact notification', err);
     }

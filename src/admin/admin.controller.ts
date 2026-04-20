@@ -745,7 +745,9 @@ export class AdminController {
     @Param('id', ParseIntPipe) id: number,
     @Res() res: Response,
   ) {
-    await this.prisma.contactMessage.delete({ where: { id } }).catch(() => null);
+    await this.prisma.contactMessage
+      .delete({ where: { id } })
+      .catch(() => null);
     return res.redirect('/admin/contacts');
   }
 

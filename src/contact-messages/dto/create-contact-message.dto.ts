@@ -19,12 +19,18 @@ export class CreateContactMessageDto {
   @IsNotEmpty({ message: 'email should not be empty' })
   email: string;
 
-  @ApiPropertyOptional({ description: 'Sender phone', example: '+7 777 123 4567' })
+  @ApiPropertyOptional({
+    description: 'Sender phone',
+    example: '+7 777 123 4567',
+  })
   @IsOptional()
   @IsString()
   phone?: string;
 
-  @ApiProperty({ description: 'Message text', example: 'Здравствуйте, хотел бы узнать...' })
+  @ApiProperty({
+    description: 'Message text',
+    example: 'Здравствуйте, хотел бы узнать...',
+  })
   @IsString()
   @IsNotEmpty({ message: 'message should not be empty' })
   @MinLength(5, { message: 'message must be at least 5 characters' })

@@ -84,6 +84,29 @@ const BASE_STYLES = `
     background: rgba(244,167,36,0.15);
     border-color: rgba(244,167,36,0.25);
     font-weight: 600;
+    position: relative;
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 6px; bottom: 6px;
+    width: 3px;
+    background: #f4a724;
+    border-radius: 0 3px 3px 0;
+  }
+  .nav-badge {
+    margin-left: auto;
+    background: #dc2626;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 6px;
   }
   .sidebar-footer { padding: 16px 14px; border-top: 1px solid rgba(255,255,255,0.06); }
   .logout {
@@ -135,7 +158,8 @@ const BASE_STYLES = `
   }
   td { padding: 14px 16px; font-size: 14px; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
   tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #fafbfc; }
+  tr:nth-child(even) td { background: #fafbfc; }
+  tr:hover td { background: #f1f5f9; }
 
   /* Shared badges */
   .badge {
@@ -290,10 +314,129 @@ const BASE_STYLES = `
   /* Hint */
   .hint { font-size: 12px; color: #94a3b8; margin-top: 2px; }
 
+  /* Breadcrumbs */
+  .breadcrumbs {
+    font-size: 12px;
+    color: #94a3b8;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .breadcrumbs a { color: #64748b; text-decoration: none; }
+  .breadcrumbs a:hover { color: #f4a724; }
+  .breadcrumbs .sep { color: #cbd5e1; }
+
+  /* Avatar */
+  .avatar {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: #fff;
+    flex-shrink: 0;
+  }
+  .name-cell { display: flex; align-items: center; gap: 10px; }
+
+  /* Search & Filters */
+  .search-filters { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 16px 22px; border-bottom: 1px solid #f1f5f9; }
+  .search-input {
+    flex: 1; min-width: 200px;
+    padding: 9px 14px 9px 36px;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 13px;
+    outline: none;
+    transition: all 0.2s;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E") no-repeat 12px center;
+  }
+  .search-input:focus { border-color: #f4a724; box-shadow: 0 0 0 3px rgba(244,167,36,0.12); }
+  .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .filter-chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    transition: all 0.2s;
+  }
+  .filter-chip:hover { border-color: #f4a724; color: #f4a724; }
+  .filter-chip.active { background: #f4a724; color: #0f172a; border-color: #f4a724; }
+
+  /* Stat card icon */
+  .stat-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+  .stat-card-accent { border-left: 4px solid; }
+
+  /* Updated timestamp */
+  .updated-at { font-size: 12px; color: #94a3b8; display: flex; align-items: center; gap: 4px; }
+
+  /* Mobile burger */
+  .burger {
+    display: none;
+    position: fixed;
+    top: 16px; left: 16px;
+    z-index: 20;
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: #0f172a;
+    border: none;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .burger span {
+    display: block; width: 18px; height: 2px; background: #fff; border-radius: 2px;
+    position: relative;
+  }
+  .burger span::before, .burger span::after {
+    content: ''; position: absolute; width: 18px; height: 2px; background: #fff; border-radius: 2px; left: 0;
+  }
+  .burger span::before { top: -6px; }
+  .burger span::after { top: 6px; }
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 9;
+  }
+  .sidebar-overlay.active { display: block; }
+
   /* Responsive */
   @media (max-width: 1024px) {
     .sidebar { width: 220px; }
     .main { margin-left: 220px; padding: 24px; }
+  }
+  @media (max-width: 768px) {
+    .burger { display: flex; }
+    .sidebar {
+      transform: translateX(-100%);
+      transition: transform 0.3s ease;
+      width: 280px;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .main { margin-left: 0; padding: 16px; padding-top: 64px; }
+    .page-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+    .stats { grid-template-columns: repeat(2, 1fr) !important; }
+    table { font-size: 13px; }
+    td, th { padding: 10px 12px; }
+    .search-filters { flex-direction: column; }
+    .search-input { min-width: 100%; }
   }
 `;
 
@@ -310,6 +453,10 @@ type SidebarPage =
 
 function sidebarHtml(active: SidebarPage) {
   return `
+  <button class="burger" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('active');">
+    <span></span>
+  </button>
+  <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open');this.classList.remove('active');"></div>
   <aside class="sidebar">
     <div class="sidebar-logo">
       <div class="circle">&#127979;</div>
@@ -554,6 +701,19 @@ export function dashboardPage(
   const kazakh = applications.filter((a) => a.language === 'kazakh').length;
   const russian = applications.filter((a) => a.language === 'russian').length;
 
+  const AVATAR_COLORS = [
+    '#6366f1',
+    '#8b5cf6',
+    '#ec4899',
+    '#f43f5e',
+    '#f97316',
+    '#eab308',
+    '#22c55e',
+    '#14b8a6',
+    '#06b6d4',
+    '#3b82f6',
+  ];
+
   const rows = applications
     .map((a) => {
       const date = new Date(a.createdAt);
@@ -566,10 +726,17 @@ export function dashboardPage(
         hour: '2-digit',
         minute: '2-digit',
       });
+      const initial = a.parentName.charAt(0).toUpperCase();
+      const avatarColor = AVATAR_COLORS[a.id % AVATAR_COLORS.length];
       return `
-      <tr>
+      <tr data-name="${escHtml(a.parentName.toLowerCase())}" data-phone="${escHtml(a.parentPhone)}" data-grade="${a.grade}" data-lang="${a.language}">
         <td><span class="id">#${a.id}</span></td>
-        <td><span class="name">${escHtml(a.parentName)}</span></td>
+        <td>
+          <div class="name-cell">
+            <div class="avatar" style="background:${avatarColor};">${initial}</div>
+            <span class="name">${escHtml(a.parentName)}</span>
+          </div>
+        </td>
         <td><span class="phone">${escHtml(a.parentPhone)}</span></td>
         <td><span class="badge grade">${GRADE_LABELS[a.grade] ?? a.grade}</span></td>
         <td><span class="badge lang-${a.language}">${LANG_LABELS[a.language] ?? a.language}</span></td>
@@ -606,34 +773,52 @@ export function dashboardPage(
     @media (max-width: 900px) { .stats { grid-template-columns: repeat(2, 1fr); } }
   `;
 
+  const nowStr = new Date().toLocaleTimeString('ru-RU', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
   const body = `
+    <div class="breadcrumbs">
+      <a href="/admin">&#127968; Главная</a>
+      <span class="sep">&#8250;</span>
+      <span>Заявки на зачисление</span>
+    </div>
+
     <div class="page-header">
       <div>
         <h1>Запросы на зачисление</h1>
         <p>Все входящие заявки от родителей</p>
       </div>
-      <a href="/admin" class="refresh-btn">&#8635; Обновить</a>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span class="updated-at">&#128337; Обновлено: ${nowStr}</span>
+        <a href="/admin" class="refresh-btn">&#8635; Обновить</a>
+      </div>
     </div>
 
     <div class="stats">
-      <div class="stat-card accent">
+      <div class="stat-card stat-card-accent" style="border-left-color:#f4a724;">
+        <div class="stat-icon" style="background:rgba(244,167,36,0.12);">&#128203;</div>
         <div class="stat-label">Всего заявок</div>
-        <div class="stat-value">${total}</div>
+        <div class="stat-value" style="color:#f4a724;">${total}</div>
         <div class="stat-sub">за всё время</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card-accent" style="border-left-color:#22c55e;">
+        <div class="stat-icon" style="background:rgba(34,197,94,0.12);">&#128161;</div>
         <div class="stat-label">Сегодня</div>
-        <div class="stat-value">${today}</div>
+        <div class="stat-value" style="color:#22c55e;">${today}</div>
         <div class="stat-sub">новых заявок</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card-accent" style="border-left-color:#06b6d4;">
+        <div class="stat-icon" style="background:rgba(6,182,212,0.12);">&#127466;&#127479;</div>
         <div class="stat-label">Казахский</div>
-        <div class="stat-value">${kazakh}</div>
+        <div class="stat-value" style="color:#06b6d4;">${kazakh}</div>
         <div class="stat-sub">язык обучения</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card-accent" style="border-left-color:#6366f1;">
+        <div class="stat-icon" style="background:rgba(99,102,241,0.12);">&#127479;&#127482;</div>
         <div class="stat-label">Русский</div>
-        <div class="stat-value">${russian}</div>
+        <div class="stat-value" style="color:#6366f1;">${russian}</div>
         <div class="stat-sub">язык обучения</div>
       </div>
     </div>
@@ -644,11 +829,36 @@ export function dashboardPage(
         <span class="count-badge">${total} записей</span>
       </div>
       ${
+        total > 0
+          ? `
+      <div class="search-filters">
+        <input type="text" class="search-input" id="search-input" placeholder="Поиск по имени или телефону..." oninput="filterTable()" />
+        <div class="filter-chips">
+          <button class="filter-chip active" data-filter="all" onclick="setFilter('all',this)">Все</button>
+          <button class="filter-chip" data-filter="1" onclick="setFilter('1',this)">1 класс</button>
+          <button class="filter-chip" data-filter="2" onclick="setFilter('2',this)">2 класс</button>
+          <button class="filter-chip" data-filter="3" onclick="setFilter('3',this)">3 класс</button>
+          <button class="filter-chip" data-filter="4" onclick="setFilter('4',this)">4 класс</button>
+          <span style="width:1px;height:24px;background:#e2e8f0;"></span>
+          <button class="filter-chip" data-filter="kazakh" onclick="setFilter('kazakh',this)">&#127466;&#127479; Казахский</button>
+          <button class="filter-chip" data-filter="russian" onclick="setFilter('russian',this)">&#127479;&#127482; Русский</button>
+        </div>
+      </div>
+      `
+          : ''
+      }
+      ${
         total === 0
           ? `
-        <div class="empty">
-          <span class="empty-icon">&#128236;</span>
-          Заявок пока нет
+        <div class="empty" style="padding:80px 20px;">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" style="margin:0 auto 20px;display:block;opacity:0.4;">
+            <rect x="10" y="14" width="60" height="52" rx="8" stroke="#94a3b8" stroke-width="2.5" fill="none"/>
+            <line x1="22" y1="30" x2="58" y2="30" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round"/>
+            <line x1="22" y1="40" x2="50" y2="40" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round"/>
+            <line x1="22" y1="50" x2="42" y2="50" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <p style="font-size:16px;font-weight:700;color:#374151;margin-bottom:6px;">Заявок пока нет</p>
+          <p style="font-size:13px;color:#94a3b8;max-width:320px;margin:0 auto;">Заявки появятся здесь, когда родители заполнят форму на сайте</p>
         </div>
       `
           : `
@@ -664,18 +874,64 @@ export function dashboardPage(
             <th>Действия</th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody id="app-tbody">${rows}</tbody>
       </table>
+      <div id="no-results" style="display:none;text-align:center;padding:40px 20px;color:#94a3b8;font-size:14px;">
+        Ничего не найдено по вашему запросу
+      </div>
       `
       }
     </div>`;
+
+  const filterScript =
+    total > 0
+      ? `
+<script>
+  var currentGrade = 'all';
+  var currentLang = 'all';
+  function setFilter(val, btn) {
+    var grades = ['1','2','3','4'];
+    var langs = ['kazakh','russian'];
+    if (val === 'all') { currentGrade = 'all'; currentLang = 'all'; }
+    else if (grades.includes(val)) { currentGrade = currentGrade === val ? 'all' : val; currentLang = 'all'; }
+    else if (langs.includes(val)) { currentLang = currentLang === val ? 'all' : val; currentGrade = 'all'; }
+    document.querySelectorAll('.filter-chip').forEach(function(c) { c.classList.remove('active'); });
+    if (currentGrade === 'all' && currentLang === 'all') {
+      document.querySelector('[data-filter="all"]').classList.add('active');
+    } else {
+      if (currentGrade !== 'all') document.querySelector('[data-filter="'+currentGrade+'"]').classList.add('active');
+      if (currentLang !== 'all') document.querySelector('[data-filter="'+currentLang+'"]').classList.add('active');
+    }
+    filterTable();
+  }
+  function filterTable() {
+    var query = (document.getElementById('search-input').value || '').toLowerCase();
+    var rows = document.querySelectorAll('#app-tbody tr');
+    var visible = 0;
+    rows.forEach(function(row) {
+      var name = row.getAttribute('data-name') || '';
+      var phone = row.getAttribute('data-phone') || '';
+      var grade = row.getAttribute('data-grade') || '';
+      var lang = row.getAttribute('data-lang') || '';
+      var matchSearch = !query || name.includes(query) || phone.includes(query);
+      var matchGrade = currentGrade === 'all' || grade === currentGrade;
+      var matchLang = currentLang === 'all' || lang === currentLang;
+      var show = matchSearch && matchGrade && matchLang;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+    var noRes = document.getElementById('no-results');
+    if (noRes) noRes.style.display = visible === 0 ? 'block' : 'none';
+  }
+</script>`
+      : '';
 
   return pageShell(
     'Заявки',
     'applications',
     extraStyles,
     body,
-    deleteModalScript('/admin/applications'),
+    deleteModalScript('/admin/applications') + filterScript,
   );
 }
 
@@ -717,6 +973,12 @@ export function emailsPage(
   `;
 
   const body = `
+    <div class="breadcrumbs">
+      <a href="/admin">&#127968; Главная</a>
+      <span class="sep">&#8250;</span>
+      <span>Почты для уведомлений</span>
+    </div>
+
     <div class="page-header">
       <div>
         <h1>Почты для уведомлений</h1>
@@ -826,6 +1088,12 @@ export function instagramPage(
   `;
 
   const body = `
+    <div class="breadcrumbs">
+      <a href="/admin">&#127968; Главная</a>
+      <span class="sep">&#8250;</span>
+      <span>Instagram посты</span>
+    </div>
+
     <div class="page-header">
       <div>
         <h1>Instagram посты</h1>
@@ -950,6 +1218,12 @@ export function merchPage(
   `;
 
   const body = `
+    <div class="breadcrumbs">
+      <a href="/admin">&#127968; Главная</a>
+      <span class="sep">&#8250;</span>
+      <span>Мерч</span>
+    </div>
+
     <div class="page-header">
       <div>
         <h1>Управление мерчем</h1>
@@ -1293,6 +1567,12 @@ export function ordersPage(
   `;
 
   const body = `
+    <div class="breadcrumbs">
+      <a href="/admin">&#127968; Главная</a>
+      <span class="sep">&#8250;</span>
+      <span>Заказы мерча</span>
+    </div>
+
     <div class="page-header">
       <div>
         <h1>Заказы мерча</h1>
@@ -1304,19 +1584,23 @@ export function ordersPage(
     ${flashHtml(flash)}
 
     <div class="stats">
-      <div class="stat-card">
+      <div class="stat-card stat-card-accent" style="border-left-color:#3b82f6;">
+        <div class="stat-icon" style="background:rgba(59,130,246,0.12);">&#127381;</div>
         <div class="stat-label">Новые</div>
         <div class="stat-value" style="color:#1e40af;">${totalNew}</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card-accent" style="border-left-color:#f59e0b;">
+        <div class="stat-icon" style="background:rgba(245,158,11,0.12);">&#9881;</div>
         <div class="stat-label">В работе</div>
         <div class="stat-value" style="color:#92400e;">${totalInProgress}</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card-accent" style="border-left-color:#22c55e;">
+        <div class="stat-icon" style="background:rgba(34,197,94,0.12);">&#10003;</div>
         <div class="stat-label">Проданы</div>
         <div class="stat-value" style="color:#166534;">${totalSold}</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card-accent" style="border-left-color:#ef4444;">
+        <div class="stat-icon" style="background:rgba(239,68,68,0.12);">&#10005;</div>
         <div class="stat-label">Отклонены</div>
         <div class="stat-value" style="color:#991b1b;">${totalRejected}</div>
       </div>
@@ -1429,6 +1713,12 @@ export function newsListPage(
   `;
 
   const body = `
+    <div class="breadcrumbs">
+      <a href="/admin">&#127968; Главная</a>
+      <span class="sep">&#8250;</span>
+      <span>Новости</span>
+    </div>
+
     <div class="page-header">
       <div>
         <h1>Новости</h1>
@@ -2095,6 +2385,12 @@ export function contactMessagesPage(
   `;
 
   const body = `
+    <div class="breadcrumbs">
+      <a href="/admin">&#127968; Главная</a>
+      <span class="sep">&#8250;</span>
+      <span>Обращения</span>
+    </div>
+
     <div class="page-header">
       <div>
         <h1>Обращения</h1>
@@ -2104,14 +2400,16 @@ export function contactMessagesPage(
     </div>
 
     <div class="stats">
-      <div class="stat-card accent">
+      <div class="stat-card stat-card-accent" style="border-left-color:#f4a724;">
+        <div class="stat-icon" style="background:rgba(244,167,36,0.12);">&#128172;</div>
         <div class="stat-label">Всего обращений</div>
-        <div class="stat-value">${total}</div>
+        <div class="stat-value" style="color:#f4a724;">${total}</div>
         <div class="stat-sub">за всё время</div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-card-accent" style="border-left-color:#22c55e;">
+        <div class="stat-icon" style="background:rgba(34,197,94,0.12);">&#128161;</div>
         <div class="stat-label">Сегодня</div>
-        <div class="stat-value">${today}</div>
+        <div class="stat-value" style="color:#22c55e;">${today}</div>
         <div class="stat-sub">новых обращений</div>
       </div>
     </div>
@@ -2124,9 +2422,14 @@ export function contactMessagesPage(
       ${
         total === 0
           ? `
-        <div class="empty">
-          <span class="empty-icon">&#128172;</span>
-          Обращений пока нет
+        <div class="empty" style="padding:80px 20px;">
+          <svg width="80" height="80" viewBox="0 0 80 80" fill="none" style="margin:0 auto 20px;display:block;opacity:0.4;">
+            <path d="M16 20h48c2.2 0 4 1.8 4 4v32c0 2.2-1.8 4-4 4H32l-12 10V60h-4c-2.2 0-4-1.8-4-4V24c0-2.2 1.8-4 4-4z" stroke="#94a3b8" stroke-width="2.5" fill="none"/>
+            <line x1="26" y1="35" x2="54" y2="35" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round"/>
+            <line x1="26" y1="45" x2="46" y2="45" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <p style="font-size:16px;font-weight:700;color:#374151;margin-bottom:6px;">Обращений пока нет</p>
+          <p style="font-size:13px;color:#94a3b8;max-width:320px;margin:0 auto;">Обращения появятся здесь, когда посетители отправят сообщение через контактную форму</p>
         </div>
       `
           : `

@@ -36,9 +36,7 @@ export class NewsService {
             }
             if (Array.isArray(b.data.content)) {
               return b.data.content
-                .map((row: any) =>
-                  Array.isArray(row) ? row.join(' ') : '',
-                )
+                .map((row: any) => (Array.isArray(row) ? row.join(' ') : ''))
                 .join(' ');
             }
             return '';
