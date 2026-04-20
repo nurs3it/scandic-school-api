@@ -305,7 +305,8 @@ type SidebarPage =
   | 'instagram'
   | 'merch'
   | 'orders'
-  | 'news';
+  | 'news'
+  | 'contacts';
 
 function sidebarHtml(active: SidebarPage) {
   return `
@@ -322,6 +323,7 @@ function sidebarHtml(active: SidebarPage) {
       <a href="/admin/news" class="nav-item ${active === 'news' ? 'active' : ''}">&#128240; Новости</a>
       <a href="/admin/merch" class="nav-item ${active === 'merch' ? 'active' : ''}">&#128717;&#65039; Мерч</a>
       <a href="/admin/orders" class="nav-item ${active === 'orders' ? 'active' : ''}">&#128722; Заказы мерча</a>
+      <a href="/admin/contacts" class="nav-item ${active === 'contacts' ? 'active' : ''}">&#128172; Обращения</a>
     </nav>
     <div class="sidebar-footer">
       <a href="/admin/logout" class="logout">&#8592; Выйти</a>
@@ -2009,5 +2011,148 @@ export function newsFormPage(action: string, values: any, error?: string) {
     NEWS_FORM_STYLES,
     body,
     scripts,
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// CONTACT MESSAGES (Обращения)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function contactMessagesPage(
+  messages: Array<{
+    id: number;
+    name: string;
+    email: string;
+    phone: string | null;
+    message: string;
+    createdAt: Date;
+  }>,
+) {
+  const total = messages.length;
+  const today = messages.filter((m) => {
+    const d = new Date(m.createdAt);
+    const now = new Date();
+    return (
+      d.getDate() === now.getDate() &&
+      d.getMonth() === now.getMonth() &&
+      d.getFullYear() === now.getFullYear()
+    );
+  }).length;
+
+  const rows = messages
+    .map((m) => {
+      const date = new Date(m.createdAt);
+      const dateStr = date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+      const timeStr = date.toLocaleTimeString('ru-RU', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const shortMsg =
+        m.message.length > 120
+          ? escHtml(m.message.slice(0, 120)) + '&hellip;'
+          : escHtml(m.message);
+      return `
+      <tr>
+        <td><span class="id">#${m.id}</span></td>
+        <td><span class="contact-name">${escHtml(m.name)}</span></td>
+        <td><a href="mailto:${escHtml(m.email)}" class="contact-email">${escHtml(m.email)}</a></td>
+        <td><span class="contact-phone">${m.phone ? escHtml(m.phone) : '—'}</span></td>
+        <td><span class="contact-msg" title="${escHtml(m.message)}">${shortMsg}</span></td>
+        <td><span class="date">${dateStr}</span><br/><span class="time">${timeStr}</span></td>
+        <td>
+          <button type="button" class="del-btn" onclick="openDeleteModal(${m.id}, '${escHtml(m.name)}')">&#10005; Удалить</button>
+        </td>
+      </tr>`;
+    })
+    .join('');
+
+  const extraStyles = `
+    .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 28px; }
+    .stat-card {
+      background: #fff; border-radius: 14px; padding: 22px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.02);
+      border: 1px solid #f1f5f9;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .stat-label { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat-value { font-size: 32px; font-weight: 800; color: #0f172a; margin-top: 6px; letter-spacing: -0.02em; }
+    .stat-sub { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+    .stat-card.accent { border-color: rgba(244,167,36,0.2); }
+    .stat-card.accent .stat-value { color: #f4a724; }
+    .id { font-size: 12px; color: #94a3b8; font-weight: 600; }
+    .contact-name { font-weight: 600; color: #0f172a; }
+    .contact-email { color: #2563eb; text-decoration: none; font-size: 13px; }
+    .contact-email:hover { text-decoration: underline; }
+    .contact-phone { color: #374151; font-family: monospace; font-size: 13px; }
+    .contact-msg { font-size: 13px; color: #475569; line-height: 1.4; }
+    .date { font-size: 13px; color: #374151; }
+    .time { font-size: 11px; color: #94a3b8; }
+  `;
+
+  const body = `
+    <div class="page-header">
+      <div>
+        <h1>Обращения</h1>
+        <p>Сообщения с контактной формы</p>
+      </div>
+      <a href="/admin/contacts" class="refresh-btn">&#8635; Обновить</a>
+    </div>
+
+    <div class="stats">
+      <div class="stat-card accent">
+        <div class="stat-label">Всего обращений</div>
+        <div class="stat-value">${total}</div>
+        <div class="stat-sub">за всё время</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Сегодня</div>
+        <div class="stat-value">${today}</div>
+        <div class="stat-sub">новых обращений</div>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-header">
+        <h3>Список обращений</h3>
+        <span class="count-badge">${total} записей</span>
+      </div>
+      ${
+        total === 0
+          ? `
+        <div class="empty">
+          <span class="empty-icon">&#128172;</span>
+          Обращений пока нет
+        </div>
+      `
+          : `
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Имя</th>
+            <th>Email</th>
+            <th>Телефон</th>
+            <th>Сообщение</th>
+            <th>Дата</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      `
+      }
+    </div>`;
+
+  return pageShell(
+    'Обращения',
+    'contacts',
+    extraStyles,
+    body,
+    deleteModalScript('/admin/contacts'),
   );
 }

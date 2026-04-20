@@ -34,6 +34,7 @@ import {
   ordersPage,
   newsListPage,
   newsFormPage,
+  contactMessagesPage,
 } from './admin.templates';
 
 // ─── File upload config (memory buffer → Supabase Storage) ────────────────────
@@ -724,6 +725,28 @@ export class AdminController {
       isActive: body.isActive === 'on' || body.isActive === true,
       slug: (body.slug ?? '').trim() || undefined,
     };
+  }
+
+  // ── Contact messages (Обращения) ─────────────────────────────────────────────
+
+  @Get('contacts')
+  @UseGuards(AdminGuard)
+  async contactsGet(@Res() res: Response) {
+    const messages = await this.prisma.contactMessage.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.send(contactMessagesPage(messages));
+  }
+
+  @Post('contacts/:id/delete')
+  @HttpCode(302)
+  @UseGuards(AdminGuard)
+  async contactDelete(
+    @Param('id', ParseIntPipe) id: number,
+    @Res() res: Response,
+  ) {
+    await this.prisma.contactMessage.delete({ where: { id } }).catch(() => null);
+    return res.redirect('/admin/contacts');
   }
 
   // ── Upload image (AJAX) ─────────────────────────────────────────────────────
