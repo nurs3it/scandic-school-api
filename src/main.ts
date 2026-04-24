@@ -29,6 +29,8 @@ async function bootstrap() {
       // Allow requests with no origin (curl, mobile apps, server-to-server)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
+      // Allow all Vercel preview/production deployments
+      if (/\.vercel\.app$/.test(origin)) return callback(null, true);
       callback(null, false);
     },
     credentials: true,
