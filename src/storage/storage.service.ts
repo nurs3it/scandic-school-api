@@ -2,7 +2,24 @@ import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const BUCKET = 'merch-images';
+const IMAGE_MIMES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+];
+
+const RECEIPT_MIMES = [...IMAGE_MIMES, 'application/pdf'];
+
+const BUCKETS = {
+  merch: 'merch-images',
+  clubs: 'clubs',
+  tournaments: 'tournaments',
+  receipts: 'receipts',
+} as const;
+
+type BucketKey = keyof typeof BUCKETS;
 
 @Injectable()
 export class StorageService implements OnModuleInit {
@@ -17,77 +34,73 @@ export class StorageService implements OnModuleInit {
   }
 
   async onModuleInit() {
-    await this.ensureBucket();
+    await this.ensureBucket(BUCKETS.merch, IMAGE_MIMES);
+    await this.ensureBucket(BUCKETS.clubs, IMAGE_MIMES);
+    await this.ensureBucket(BUCKETS.tournaments, IMAGE_MIMES);
+    await this.ensureBucket(BUCKETS.receipts, RECEIPT_MIMES);
   }
 
-  private async ensureBucket() {
+  private async ensureBucket(name: string, mimes: string[]) {
     const { data: buckets } = await this.supabase.storage.listBuckets();
-    const exists = buckets?.some((b) => b.name === BUCKET);
-    if (!exists) {
-      const { error } = await this.supabase.storage.createBucket(BUCKET, {
-        public: true,
-        fileSizeLimit: 10 * 1024 * 1024, // 10 MB
-        allowedMimeTypes: [
-          'image/jpeg',
-          'image/png',
-          'image/webp',
-          'image/gif',
-          'image/avif',
-        ],
-      });
-      if (error) {
-        this.logger.error(
-          `Failed to create bucket "${BUCKET}": ${error.message}`,
-        );
-      } else {
-        this.logger.log(`Bucket "${BUCKET}" created`);
-      }
-    }
+    if (buckets?.some((b) => b.name === name)) return;
+    const { error } = await this.supabase.storage.createBucket(name, {
+      public: true,
+      fileSizeLimit: 10 * 1024 * 1024,
+      allowedMimeTypes: mimes,
+    });
+    if (error) this.logger.error(`Bucket "${name}" create failed: ${error.message}`);
+    else this.logger.log(`Bucket "${name}" created`);
   }
 
-  async upload(file: Express.Multer.File): Promise<string> {
-    const ext = file.originalname.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
+  private async uploadTo(
+    bucketKey: BucketKey,
+    file: Express.Multer.File,
+    prefix = '',
+  ): Promise<string> {
+    const ext = file.originalname.split('.').pop()?.toLowerCase() || 'bin';
+    const fileName = `${prefix}${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const bucket = BUCKETS[bucketKey];
     const { error } = await this.supabase.storage
-      .from(BUCKET)
+      .from(bucket)
       .upload(fileName, file.buffer, {
         contentType: file.mimetype,
         upsert: false,
       });
-
-    if (error) {
-      throw new Error(`Upload failed: ${error.message}`);
-    }
-
-    const { data } = this.supabase.storage.from(BUCKET).getPublicUrl(fileName);
+    if (error) throw new Error(`Upload to ${bucket} failed: ${error.message}`);
+    const { data } = this.supabase.storage.from(bucket).getPublicUrl(fileName);
     return data.publicUrl;
   }
 
+  // Existing API (merch)
+  async upload(file: Express.Multer.File): Promise<string> {
+    return this.uploadTo('merch', file);
+  }
   async uploadMultiple(files: Express.Multer.File[]): Promise<string[]> {
     return Promise.all(files.map((f) => this.upload(f)));
   }
-
   async uploadNewsImage(
     buffer: Buffer,
     originalname: string,
     mimetype: string,
   ): Promise<string> {
-    const ext = originalname.split('.').pop()?.toLowerCase() || 'jpg';
-    const fileName = `news/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    return this.uploadTo(
+      'merch',
+      { buffer, originalname, mimetype } as Express.Multer.File,
+      'news/',
+    );
+  }
 
-    const { error } = await this.supabase.storage
-      .from(BUCKET)
-      .upload(fileName, buffer, {
-        contentType: mimetype,
-        upsert: false,
-      });
-
-    if (error) {
-      throw new Error(`Upload failed: ${error.message}`);
-    }
-
-    const { data } = this.supabase.storage.from(BUCKET).getPublicUrl(fileName);
-    return data.publicUrl;
+  // New API
+  uploadClubImage(file: Express.Multer.File) {
+    return this.uploadTo('clubs', file);
+  }
+  uploadTournamentBanner(file: Express.Multer.File) {
+    return this.uploadTo('tournaments', file, 'banner/');
+  }
+  uploadTournamentQr(file: Express.Multer.File) {
+    return this.uploadTo('tournaments', file, 'qr/');
+  }
+  uploadTournamentReceipt(file: Express.Multer.File) {
+    return this.uploadTo('receipts', file);
   }
 }
