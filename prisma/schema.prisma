@@ -92,3 +92,97 @@ model MerchItem {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+enum PaymentMethod {
+  NONE
+  KASPI_PHONE
+  KASPI_QR
+  BOTH
+}
+
+enum RegistrationStatus {
+  NEW
+  PAID
+  CONFIRMED
+  REJECTED
+  CANCELLED
+}
+
+model Club {
+  id               Int          @id @default(autoincrement())
+  slug             String       @unique
+  name             String
+  shortDescription String
+  description      String       @db.Text
+  image            String
+  ageRange         String?
+  schedule         String?
+  teacher          String?
+  isActive         Boolean      @default(true)
+  order            Int          @default(0)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  tournaments      Tournament[]
+
+  @@index([isActive, order])
+}
+
+model Tournament {
+  id                   Int       @id @default(autoincrement())
+  slug                 String    @unique
+  title                String
+  shortDescription     String
+  description          String    @db.Text
+  bannerUrl            String
+  ageGroup             String?
+  startDate            DateTime
+  endDate              DateTime
+  registrationDeadline DateTime?
+  location             String?
+  stages               Json      @default("[]")
+
+  isFree        Boolean       @default(false)
+  price         Int           @default(0)
+  paymentMethod PaymentMethod @default(NONE)
+  kaspiPhone    String?
+  kaspiQrUrl    String?
+
+  isActive           Boolean @default(true)
+  isRegistrationOpen Boolean @default(true)
+  order              Int     @default(0)
+
+  clubId        Int?
+  club          Club?                    @relation(fields: [clubId], references: [id], onDelete: SetNull)
+  registrations TournamentRegistration[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, startDate])
+  @@index([clubId])
+}
+
+model TournamentRegistration {
+  id           Int        @id @default(autoincrement())
+  tournamentId Int
+  tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  participantName String
+  parentName      String?
+  phone           String
+  email           String?
+  grade           String?
+  comment         String?
+
+  receiptUrl  String?
+  paymentNote String?
+
+  status    RegistrationStatus @default(NEW)
+  adminNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tournamentId, status])
+  @@index([createdAt])
+}
