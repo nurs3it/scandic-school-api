@@ -23,6 +23,9 @@ import { memoryStorage } from 'multer';
 import { PrismaService } from '../prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { NewsService } from '../news/news.service';
+import { ClubsService } from '../clubs/clubs.service';
+import { TournamentsService } from '../tournaments/tournaments.service';
+import { TournamentRegistrationsService } from '../tournament-registrations/tournament-registrations.service';
 import { AdminGuard, isAuthenticated, SESSION_KEY } from './admin.guard';
 import {
   loginPage,
@@ -36,6 +39,18 @@ import {
   newsFormPage,
   contactMessagesPage,
 } from './admin.templates';
+import {
+  clubsListPage,
+  clubFormPage,
+} from './templates/clubs.templates';
+import {
+  tournamentsListPage,
+  tournamentFormPage,
+} from './templates/tournaments.templates';
+import {
+  registrationsListPage,
+  registrationDetailPage,
+} from './templates/registrations.templates';
 
 // ─── File upload config (memory buffer → Supabase Storage) ────────────────────
 
@@ -84,6 +99,9 @@ export class AdminController {
     private readonly prisma: PrismaService,
     private readonly storage: StorageService,
     private readonly news: NewsService,
+    private readonly clubs: ClubsService,
+    private readonly tournaments: TournamentsService,
+    private readonly registrations: TournamentRegistrationsService,
   ) {}
 
   // ── Auth (no guard — these handle their own auth) ───────────────────────────
@@ -763,5 +781,305 @@ export class AdminController {
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
     const url = await this.storage.upload(file);
     return res.json({ url });
+  }
+
+  // ── Clubs ───────────────────────────────────────────────────────────────────
+
+  @UseGuards(AdminGuard)
+  @Get('clubs')
+  async clubsList(@Req() req: Request, @Res() res: Response) {
+    const items = await this.clubs.findAllAdmin();
+    const flash =
+      req.query.added ? 'Кружок создан' :
+      req.query.updated ? 'Кружок обновлён' :
+      req.query.deleted ? 'Кружок удалён' : undefined;
+    return res.send(clubsListPage(items, flash));
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('clubs/new')
+  clubNew(@Res() res: Response) {
+    return res.send(clubFormPage('create'));
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('clubs')
+  @UseInterceptors(FileInterceptor('image', uploadConfig))
+  async clubCreate(
+    @Body() body: any,
+    @UploadedFile() image: Express.Multer.File,
+    @Res() res: Response,
+  ) {
+    try {
+      if (!image) throw new Error('Картинка обязательна');
+      const imageUrl = await this.storage.uploadClubImage(image);
+      await this.clubs.create({
+        name: body.name,
+        shortDescription: body.shortDescription,
+        description: body.description,
+        image: imageUrl,
+        ageRange: body.ageRange || undefined,
+        schedule: body.schedule || undefined,
+        teacher: body.teacher || undefined,
+        isActive: body.isActive === '1',
+        order: body.order ? parseInt(body.order, 10) : 0,
+        slug: body.slug || undefined,
+      });
+      return res.redirect('/admin/clubs?added=1');
+    } catch (e: any) {
+      return res.send(clubFormPage('create', undefined, e.message));
+    }
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('clubs/:id/edit')
+  async clubEdit(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const club = await this.clubs.findById(id);
+    return res.send(clubFormPage('edit', club));
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('clubs/:id')
+  @UseInterceptors(FileInterceptor('image', uploadConfig))
+  async clubUpdate(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: any,
+    @UploadedFile() image: Express.Multer.File | undefined,
+    @Res() res: Response,
+  ) {
+    try {
+      const patch: any = {
+        name: body.name,
+        shortDescription: body.shortDescription,
+        description: body.description,
+        ageRange: body.ageRange || undefined,
+        schedule: body.schedule || undefined,
+        teacher: body.teacher || undefined,
+        isActive: body.isActive === '1',
+        order: body.order ? parseInt(body.order, 10) : 0,
+        slug: body.slug || undefined,
+      };
+      if (image) patch.image = await this.storage.uploadClubImage(image);
+      await this.clubs.update(id, patch);
+      return res.redirect('/admin/clubs?updated=1');
+    } catch (e: any) {
+      const club = await this.clubs.findById(id);
+      return res.send(clubFormPage('edit', club, e.message));
+    }
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('clubs/:id/delete')
+  async clubDelete(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    await this.clubs.remove(id);
+    return res.redirect('/admin/clubs?deleted=1');
+  }
+
+  // ── Tournaments ─────────────────────────────────────────────────────────────
+
+  private parseStagesFromBody(body: any): { title: string; date: string; description?: string }[] {
+    const raw = body.stages;
+    if (!raw || typeof raw !== 'object') return [];
+    const arr = Array.isArray(raw) ? raw : Object.values(raw);
+    return (arr as any[])
+      .filter((s) => s && s.title && s.date)
+      .map((s) => ({
+        title: String(s.title).slice(0, 200),
+        date: new Date(s.date).toISOString(),
+        description: s.description ? String(s.description).slice(0, 2000) : undefined,
+      }));
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('tournaments')
+  async tournamentsList(@Req() req: Request, @Res() res: Response) {
+    const items = await this.tournaments.findAllAdmin();
+    const flash =
+      req.query.added ? 'Турнир создан' :
+      req.query.updated ? 'Турнир обновлён' :
+      req.query.deleted ? 'Турнир удалён' : undefined;
+    return res.send(tournamentsListPage(items as any, flash));
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('tournaments/new')
+  async tournamentNew(@Res() res: Response) {
+    const clubs = await this.prisma.club.findMany({
+      where: { isActive: true },
+      select: { id: true, name: true },
+      orderBy: { order: 'asc' },
+    });
+    return res.send(tournamentFormPage('create', undefined, clubs));
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('tournaments')
+  @UseInterceptors(FileFieldsInterceptor(
+    [{ name: 'banner', maxCount: 1 }, { name: 'kaspiQr', maxCount: 1 }],
+    uploadConfig,
+  ))
+  async tournamentCreate(
+    @Body() body: any,
+    @UploadedFiles() files: { banner?: Express.Multer.File[]; kaspiQr?: Express.Multer.File[] },
+    @Res() res: Response,
+  ) {
+    const clubs = await this.prisma.club.findMany({
+      select: { id: true, name: true }, orderBy: { order: 'asc' },
+    });
+    try {
+      const banner = files?.banner?.[0];
+      if (!banner) throw new Error('Баннер обязателен');
+      const bannerUrl = await this.storage.uploadTournamentBanner(banner);
+      let kaspiQrUrl: string | undefined;
+      if (files?.kaspiQr?.[0]) {
+        kaspiQrUrl = await this.storage.uploadTournamentQr(files.kaspiQr[0]);
+      }
+      await this.tournaments.create({
+        title: body.title,
+        shortDescription: body.shortDescription,
+        description: body.description,
+        bannerUrl,
+        ageGroup: body.ageGroup || undefined,
+        startDate: new Date(body.startDate).toISOString(),
+        endDate: new Date(body.endDate).toISOString(),
+        registrationDeadline: body.registrationDeadline
+          ? new Date(body.registrationDeadline).toISOString() : undefined,
+        location: body.location || undefined,
+        stages: this.parseStagesFromBody(body),
+        isFree: body.isFree === '1',
+        price: body.price ? parseInt(body.price, 10) : 0,
+        paymentMethod: body.paymentMethod,
+        kaspiPhone: body.kaspiPhone || undefined,
+        kaspiQrUrl,
+        isActive: body.isActive === '1',
+        isRegistrationOpen: body.isRegistrationOpen === '1',
+        order: body.order ? parseInt(body.order, 10) : 0,
+        clubId: body.clubId ? parseInt(body.clubId, 10) : undefined,
+        slug: body.slug || undefined,
+      });
+      return res.redirect('/admin/tournaments?added=1');
+    } catch (e: any) {
+      return res.send(tournamentFormPage('create', undefined, clubs, e.message));
+    }
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('tournaments/:id/edit')
+  async tournamentEdit(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const tournament = await this.tournaments.findById(id);
+    const clubs = await this.prisma.club.findMany({
+      select: { id: true, name: true }, orderBy: { order: 'asc' },
+    });
+    return res.send(tournamentFormPage('edit', tournament as any, clubs));
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('tournaments/:id')
+  @UseInterceptors(FileFieldsInterceptor(
+    [{ name: 'banner', maxCount: 1 }, { name: 'kaspiQr', maxCount: 1 }],
+    uploadConfig,
+  ))
+  async tournamentUpdate(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: any,
+    @UploadedFiles() files: { banner?: Express.Multer.File[]; kaspiQr?: Express.Multer.File[] },
+    @Res() res: Response,
+  ) {
+    try {
+      const patch: any = {
+        title: body.title,
+        shortDescription: body.shortDescription,
+        description: body.description,
+        ageGroup: body.ageGroup || undefined,
+        startDate: new Date(body.startDate).toISOString(),
+        endDate: new Date(body.endDate).toISOString(),
+        registrationDeadline: body.registrationDeadline
+          ? new Date(body.registrationDeadline).toISOString() : null,
+        location: body.location || undefined,
+        stages: this.parseStagesFromBody(body),
+        isFree: body.isFree === '1',
+        price: body.price ? parseInt(body.price, 10) : 0,
+        paymentMethod: body.paymentMethod,
+        kaspiPhone: body.kaspiPhone || undefined,
+        isActive: body.isActive === '1',
+        isRegistrationOpen: body.isRegistrationOpen === '1',
+        order: body.order ? parseInt(body.order, 10) : 0,
+        clubId: body.clubId ? parseInt(body.clubId, 10) : null,
+        slug: body.slug || undefined,
+      };
+      if (files?.banner?.[0]) patch.bannerUrl = await this.storage.uploadTournamentBanner(files.banner[0]);
+      if (files?.kaspiQr?.[0]) patch.kaspiQrUrl = await this.storage.uploadTournamentQr(files.kaspiQr[0]);
+      await this.tournaments.update(id, patch);
+      return res.redirect('/admin/tournaments?updated=1');
+    } catch (e: any) {
+      const tournament = await this.tournaments.findById(id);
+      const clubs = await this.prisma.club.findMany({
+        select: { id: true, name: true }, orderBy: { order: 'asc' },
+      });
+      return res.send(tournamentFormPage('edit', tournament as any, clubs, e.message));
+    }
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('tournaments/:id/delete')
+  async tournamentDelete(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    await this.tournaments.remove(id);
+    return res.redirect('/admin/tournaments?deleted=1');
+  }
+
+  // ── Tournament Registrations ────────────────────────────────────────────────
+
+  @UseGuards(AdminGuard)
+  @Get('tournament-registrations')
+  async registrationsList(@Req() req: Request, @Res() res: Response) {
+    const q: any = req.query;
+    const query = {
+      tournamentId: q.tournamentId ? parseInt(q.tournamentId, 10) : undefined,
+      status: q.status || undefined,
+      from: q.from || undefined,
+      to: q.to || undefined,
+      search: q.search || undefined,
+      page: q.page ? parseInt(q.page, 10) : 1,
+      pageSize: 50,
+    };
+    const { items, total } = await this.registrations.listAdmin(query as any);
+    const tournaments = await this.prisma.tournament.findMany({
+      select: { id: true, title: true },
+      orderBy: { startDate: 'desc' },
+    });
+    return res.send(registrationsListPage(items as any, query, total, tournaments));
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('tournament-registrations/:id')
+  async registrationDetail(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const reg = await this.registrations.findByIdAdmin(id);
+    const flash = req.query.updated ? 'Статус обновлён' : undefined;
+    return res.send(registrationDetailPage(reg as any, flash));
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('tournament-registrations/:id/status')
+  async registrationUpdateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { status: any; adminNote?: string },
+    @Res() res: Response,
+  ) {
+    await this.registrations.updateStatus(id, {
+      status: body.status,
+      adminNote: body.adminNote || undefined,
+    });
+    return res.redirect(`/admin/tournament-registrations/${id}?updated=1`);
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('tournament-registrations/:id/delete')
+  async registrationDelete(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    await this.registrations.remove(id);
+    return res.redirect('/admin/tournament-registrations');
   }
 }

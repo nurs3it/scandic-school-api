@@ -442,14 +442,17 @@ const BASE_STYLES = `
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
-type SidebarPage =
+export type SidebarPage =
   | 'applications'
   | 'emails'
   | 'instagram'
   | 'merch'
   | 'orders'
   | 'news'
-  | 'contacts';
+  | 'contacts'
+  | 'clubs'
+  | 'tournaments'
+  | 'tournament-registrations';
 
 function sidebarHtml(active: SidebarPage) {
   return `
@@ -468,6 +471,9 @@ function sidebarHtml(active: SidebarPage) {
       <a href="/admin/emails" class="nav-item ${active === 'emails' ? 'active' : ''}">&#9993;&#65039; Почты для уведомлений</a>
       <a href="/admin/instagram" class="nav-item ${active === 'instagram' ? 'active' : ''}">&#128248; Instagram посты</a>
       <a href="/admin/news" class="nav-item ${active === 'news' ? 'active' : ''}">&#128240; Новости</a>
+      <a href="/admin/clubs" class="nav-item ${active === 'clubs' ? 'active' : ''}">&#9818; Кружки</a>
+      <a href="/admin/tournaments" class="nav-item ${active === 'tournaments' ? 'active' : ''}">&#127942; Турниры</a>
+      <a href="/admin/tournament-registrations" class="nav-item ${active === 'tournament-registrations' ? 'active' : ''}">&#128221; Заявки на турниры</a>
       <a href="/admin/merch" class="nav-item ${active === 'merch' ? 'active' : ''}">&#128717;&#65039; Мерч</a>
       <a href="/admin/orders" class="nav-item ${active === 'orders' ? 'active' : ''}">&#128722; Заказы мерча</a>
       <a href="/admin/contacts" class="nav-item ${active === 'contacts' ? 'active' : ''}">&#128172; Обращения</a>
@@ -478,7 +484,7 @@ function sidebarHtml(active: SidebarPage) {
   </aside>`;
 }
 
-function flashHtml(flash?: {
+export function flashHtml(flash?: {
   type: 'success' | 'error';
   message: string;
 }): string {
@@ -487,7 +493,7 @@ function flashHtml(flash?: {
   return `<div class="flash flash-${flash.type}">${icon} ${escHtml(flash.message)}</div>`;
 }
 
-function pageShell(
+export function pageShell(
   title: string,
   active: SidebarPage,
   extraStyles: string,
