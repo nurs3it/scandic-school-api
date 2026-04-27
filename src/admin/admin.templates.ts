@@ -63,6 +63,17 @@ const BASE_STYLES = `
   .sidebar-logo h2 { font-size: 16px; font-weight: 700; color: #fff; letter-spacing: -0.01em; }
   .sidebar-logo p { font-size: 11px; color: #64748b; margin-top: 2px; }
   .nav { padding: 20px 14px; flex: 1; }
+  .nav-section { margin-bottom: 18px; }
+  .nav-section:last-child { margin-bottom: 0; }
+  .nav-section-title {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #475569;
+    padding: 0 14px 6px;
+    margin-bottom: 4px;
+  }
   .nav-item {
     display: flex; align-items: center; gap: 10px;
     padding: 11px 14px;
@@ -467,16 +478,31 @@ function sidebarHtml(active: SidebarPage) {
       <p>Панель администратора</p>
     </div>
     <nav class="nav">
-      <a href="/admin" class="nav-item ${active === 'applications' ? 'active' : ''}">&#128203; Заявки на зачисление</a>
-      <a href="/admin/emails" class="nav-item ${active === 'emails' ? 'active' : ''}">&#9993;&#65039; Почты для уведомлений</a>
-      <a href="/admin/instagram" class="nav-item ${active === 'instagram' ? 'active' : ''}">&#128248; Instagram посты</a>
-      <a href="/admin/news" class="nav-item ${active === 'news' ? 'active' : ''}">&#128240; Новости</a>
-      <a href="/admin/clubs" class="nav-item ${active === 'clubs' ? 'active' : ''}">&#9818; Кружки</a>
-      <a href="/admin/tournaments" class="nav-item ${active === 'tournaments' ? 'active' : ''}">&#127942; Турниры</a>
-      <a href="/admin/tournament-registrations" class="nav-item ${active === 'tournament-registrations' ? 'active' : ''}">&#128221; Заявки на турниры</a>
-      <a href="/admin/merch" class="nav-item ${active === 'merch' ? 'active' : ''}">&#128717;&#65039; Мерч</a>
-      <a href="/admin/orders" class="nav-item ${active === 'orders' ? 'active' : ''}">&#128722; Заказы мерча</a>
-      <a href="/admin/contacts" class="nav-item ${active === 'contacts' ? 'active' : ''}">&#128172; Обращения</a>
+      <div class="nav-section">
+        <div class="nav-section-title">Заявки и обращения</div>
+        <a href="/admin" class="nav-item ${active === 'applications' ? 'active' : ''}">&#128203; Заявки на зачисление</a>
+        <a href="/admin/tournament-registrations" class="nav-item ${active === 'tournament-registrations' ? 'active' : ''}">&#128221; Заявки на турниры</a>
+        <a href="/admin/contacts" class="nav-item ${active === 'contacts' ? 'active' : ''}">&#128172; Обращения</a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Кружки и турниры</div>
+        <a href="/admin/clubs" class="nav-item ${active === 'clubs' ? 'active' : ''}">&#9818; Кружки</a>
+        <a href="/admin/tournaments" class="nav-item ${active === 'tournaments' ? 'active' : ''}">&#127942; Турниры</a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Контент</div>
+        <a href="/admin/news" class="nav-item ${active === 'news' ? 'active' : ''}">&#128240; Новости</a>
+        <a href="/admin/instagram" class="nav-item ${active === 'instagram' ? 'active' : ''}">&#128248; Instagram посты</a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Магазин</div>
+        <a href="/admin/merch" class="nav-item ${active === 'merch' ? 'active' : ''}">&#128717;&#65039; Мерч</a>
+        <a href="/admin/orders" class="nav-item ${active === 'orders' ? 'active' : ''}">&#128722; Заказы мерча</a>
+      </div>
+      <div class="nav-section">
+        <div class="nav-section-title">Настройки</div>
+        <a href="/admin/emails" class="nav-item ${active === 'emails' ? 'active' : ''}">&#9993;&#65039; Почты для уведомлений</a>
+      </div>
     </nav>
     <div class="sidebar-footer">
       <a href="/admin/logout" class="logout">&#8592; Выйти</a>
