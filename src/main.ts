@@ -22,6 +22,8 @@ async function bootstrap() {
     'http://localhost:3001',
     'https://scandicschools.com',
     'https://www.scandicschools.com',
+    'https://scandicschool.edu.kz',
+    'https://www.scandicschool.edu.kz',
   ].filter(Boolean) as string[];
 
   app.enableCors({

@@ -353,7 +353,7 @@ export class MailService {
   ): Promise<void> {
     if (!this.resend) return;
     if (!reg.email) return;
-    const frontendUrl = process.env.FRONTEND_URL || 'https://scandicschools.com';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.scandicschool.edu.kz';
     const tournamentUrl = `${frontendUrl.replace(/\/$/, '')}/tournaments/${tournament.slug}`;
     const html = tournamentRegistrationStatusHtml(reg, tournament, newStatus, tournamentUrl);
     await this.resend.emails.send({

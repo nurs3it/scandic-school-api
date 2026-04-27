@@ -1,4 +1,11 @@
 import { escHtml, pageShell, flashHtml } from '../admin.templates';
+import {
+  EDITORJS_STYLES,
+  editorjsFieldHtml,
+  editorjsScripts,
+  imagePreviewScript,
+  encodeContentB64,
+} from './editorjs.helper';
 import type { Tournament, Club } from '@prisma/client';
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
@@ -66,6 +73,13 @@ const FORM_STYLES = `
     transition: all 0.2s;
   }
   .stage-add-btn:hover { border-color: #f4a724; background: #fffbeb; }
+  .preview-img-box { margin-top: 12px; }
+  .preview-img-box img {
+    max-width: 100%; max-height: 240px; border-radius: 10px;
+    border: 1px solid #e2e8f0; display: none;
+  }
+  .preview-img-box.qr img { max-height: 180px; }
+  ${EDITORJS_STYLES}
 `;
 
 // ─── Tournaments list ─────────────────────────────────────────────────────────
@@ -294,7 +308,7 @@ export function tournamentFormPage(
     ${errorHtml}
 
     <div class="form-card">
-      <form method="POST" action="${action}" enctype="multipart/form-data">
+      <form id="tournament-form" method="POST" action="${action}" enctype="multipart/form-data">
 
         <fieldset>
           <legend>Основное</legend>
@@ -315,8 +329,7 @@ export function tournamentFormPage(
             </div>
 
             <div class="form-group full">
-              <label>Полное описание (Markdown)</label>
-              <textarea name="description" rows="10" placeholder="Полное описание...">${val('description')}</textarea>
+              ${editorjsFieldHtml({ fieldName: 'description', holderId: 'tournament-editor', hiddenId: 'tournament-description-hidden', label: 'Полное описание' })}
             </div>
 
             <div class="form-group">
@@ -337,6 +350,7 @@ export function tournamentFormPage(
                 <div class="upload-area-icon">&#128444;</div>
                 <div class="upload-area-text"><strong>Нажмите или перетащите</strong><br/>PNG, JPG, WebP до 10 МБ</div>
               </div>
+              <div class="preview-img-box"><img id="tournament-banner-preview" alt="Предпросмотр баннера" /></div>
             </div>
           </div>
         </fieldset>
@@ -419,6 +433,7 @@ export function tournamentFormPage(
                   <div class="upload-area-icon">&#128247;</div>
                   <div class="upload-area-text"><strong>QR-код для оплаты</strong><br/>PNG, JPG</div>
                 </div>
+                <div class="preview-img-box qr"><img id="tournament-qr-preview" alt="Предпросмотр QR" /></div>
               </div>
             </div>
           </div>
@@ -513,7 +528,12 @@ export function tournamentFormPage(
   isFreeCb.addEventListener('change', togglePayment);
   methodSel.addEventListener('change', togglePayment);
   togglePayment();
-<\/script>`;
+
+  // ── Image previews ──
+  ${imagePreviewScript('banner', 'tournament-banner-preview')}
+  ${imagePreviewScript('kaspiQr', 'tournament-qr-preview')}
+<\/script>
+${editorjsScripts({ formId: 'tournament-form', contentB64: encodeContentB64(tournament?.description ?? ''), holderId: 'tournament-editor', hiddenId: 'tournament-description-hidden' })}`;
 
   return pageShell(title, 'tournaments', FORM_STYLES, body, scripts);
 }

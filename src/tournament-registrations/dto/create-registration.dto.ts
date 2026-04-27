@@ -8,7 +8,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-const KZ_PHONE = /^\+?7[\s\-]?7\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}$/;
+const KZ_PHONE = /^\+?7[\s\-()]*7\d{2}[\s\-()]*\d{3}[\s\-()]*\d{2}[\s\-()]*\d{2}$/;
 
 export class CreateRegistrationDto {
   @ApiProperty()

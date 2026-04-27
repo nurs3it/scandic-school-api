@@ -1,4 +1,11 @@
 import { escHtml, pageShell, flashHtml } from '../admin.templates';
+import {
+  EDITORJS_STYLES,
+  editorjsFieldHtml,
+  editorjsScripts,
+  imagePreviewScript,
+  encodeContentB64,
+} from './editorjs.helper';
 import type { Club } from '@prisma/client';
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
@@ -57,6 +64,12 @@ const FORM_STYLES = `
   .upload-area-icon { font-size: 32px; margin-bottom: 8px; opacity: 0.6; }
   .upload-area-text { font-size: 13px; color: #64748b; }
   .upload-area-text strong { color: #0f172a; }
+  .preview-img-box { margin-top: 12px; }
+  .preview-img-box img {
+    max-width: 100%; max-height: 240px; border-radius: 10px;
+    border: 1px solid #e2e8f0; display: none;
+  }
+  ${EDITORJS_STYLES}
 `;
 
 // ─── Clubs list ───────────────────────────────────────────────────────────────
@@ -179,7 +192,7 @@ export function clubFormPage(
     ${errorHtml}
 
     <div class="form-card">
-      <form method="POST" action="${action}" enctype="multipart/form-data">
+      <form id="club-form" method="POST" action="${action}" enctype="multipart/form-data">
         <div class="form-grid">
           <div class="form-group">
             <label>Название *</label>
@@ -197,8 +210,7 @@ export function clubFormPage(
           </div>
 
           <div class="form-group full">
-            <label>Полное описание (Markdown)</label>
-            <textarea name="description" rows="10" placeholder="Полное описание...">${val('description')}</textarea>
+            ${editorjsFieldHtml({ fieldName: 'description', holderId: 'club-editor', hiddenId: 'club-description-hidden', label: 'Полное описание' })}
           </div>
 
           <div class="form-group full">
@@ -209,6 +221,7 @@ export function clubFormPage(
               <div class="upload-area-icon">&#128444;</div>
               <div class="upload-area-text"><strong>Нажмите или перетащите</strong><br/>PNG, JPG, WebP до 10 МБ</div>
             </div>
+            <div class="preview-img-box"><img id="club-image-preview" alt="Предпросмотр" /></div>
           </div>
 
           <div class="form-group">
@@ -246,20 +259,30 @@ export function clubFormPage(
       </form>
     </div>`;
 
+  const contentB64 = encodeContentB64(club?.description ?? '');
+
   const script = `<script>
-  const slugInput = document.querySelector('input[name="slug"]');
-  const nameInput = document.querySelector('input[name="name"]');
-  const translit = (s) => s.toLowerCase().replace(/[а-яё]/g, ch => ({а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'}[ch] || ch))
-    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  if (slugInput && nameInput) {
-    if (slugInput.value) slugInput.dataset.touched = '1';
-    nameInput.addEventListener('input', () => {
-      if (slugInput.dataset.touched) return;
-      slugInput.value = translit(nameInput.value);
-    });
-    slugInput.addEventListener('input', () => { slugInput.dataset.touched = '1'; });
-  }
-</script>`;
+  (function() {
+    var slugInput = document.querySelector('input[name="slug"]');
+    var nameInput = document.querySelector('input[name="name"]');
+    function translit(s) {
+      return s.toLowerCase().replace(/[а-яё]/g, function(ch) {
+        var map = {а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+        return map[ch] || ch;
+      }).replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    }
+    if (slugInput && nameInput) {
+      if (slugInput.value) slugInput.dataset.touched = '1';
+      nameInput.addEventListener('input', function() {
+        if (slugInput.dataset.touched) return;
+        slugInput.value = translit(nameInput.value);
+      });
+      slugInput.addEventListener('input', function() { slugInput.dataset.touched = '1'; });
+    }
+    ${imagePreviewScript('image', 'club-image-preview')}
+  })();
+</script>
+${editorjsScripts({ formId: 'club-form', contentB64, holderId: 'club-editor', hiddenId: 'club-description-hidden' })}`;
 
   return pageShell(title, 'clubs', FORM_STYLES, body, script);
 }
