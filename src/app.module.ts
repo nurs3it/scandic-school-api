@@ -11,6 +11,7 @@ import { StorageModule } from './storage/storage.module';
 import { NewsModule } from './news/news.module';
 import { ClubsModule } from './clubs/clubs.module';
 import { TournamentsModule } from './tournaments/tournaments.module';
+import { TournamentRegistrationsModule } from './tournament-registrations/tournament-registrations.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { TournamentsModule } from './tournaments/tournaments.module';
     NewsModule,
     ClubsModule,
     TournamentsModule,
+    TournamentRegistrationsModule,
   ],
 })
 export class AppModule {}

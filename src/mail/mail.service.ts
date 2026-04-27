@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Resend } from 'resend';
+import { PrismaService } from '../prisma/prisma.service';
+import type { Tournament, TournamentRegistration, RegistrationStatus } from '@prisma/client';
+import { tournamentRegistrationAdminHtml } from './templates/tournament-registration-admin';
+import { tournamentRegistrationStatusHtml } from './templates/tournament-registration-status';
+import { HUMAN_STATUS } from './templates/brand';
 
 export interface ApplicationNotificationData {
   id: number;
@@ -26,7 +31,7 @@ export class MailService {
   private readonly logger = new Logger(MailService.name);
   private resend: Resend;
 
-  constructor() {
+  constructor(private readonly prisma: PrismaService) {
     if (process.env.RESEND_API_KEY) {
       this.resend = new Resend(process.env.RESEND_API_KEY);
     }
@@ -314,6 +319,49 @@ export class MailService {
     } catch (err) {
       this.logger.error('Failed to send order notification', err);
     }
+  }
+
+  async sendTournamentRegistrationToAdmins(
+    reg: TournamentRegistration,
+    tournament: Tournament,
+  ): Promise<void> {
+    if (!this.resend) {
+      this.logger.warn('RESEND_API_KEY not configured, skipping email');
+      return;
+    }
+    const recipients = await this.prisma.notificationEmail.findMany();
+    if (recipients.length === 0) return;
+    const adminUrl = process.env.ADMIN_URL || 'http://localhost:3001/admin';
+    const html = tournamentRegistrationAdminHtml(reg, tournament, adminUrl);
+    await Promise.all(
+      recipients.map((r) =>
+        this.resend.emails.send({
+          from: 'Scandic School <noreply@scandicschools.com>',
+          to: r.email,
+          subject: `[Scandic School] Новая заявка на турнир «${tournament.title}» — ${reg.participantName}`,
+          html,
+        }),
+      ),
+    );
+  }
+
+  async sendRegistrationStatusUpdateToParticipant(
+    reg: TournamentRegistration,
+    tournament: Tournament,
+    _oldStatus: RegistrationStatus,
+    newStatus: RegistrationStatus,
+  ): Promise<void> {
+    if (!this.resend) return;
+    if (!reg.email) return;
+    const frontendUrl = process.env.FRONTEND_URL || 'https://scandicschools.com';
+    const tournamentUrl = `${frontendUrl.replace(/\/$/, '')}/tournaments/${tournament.slug}`;
+    const html = tournamentRegistrationStatusHtml(reg, tournament, newStatus, tournamentUrl);
+    await this.resend.emails.send({
+      from: 'Scandic School <noreply@scandicschools.com>',
+      to: reg.email,
+      subject: `[Scandic School] Статус заявки на «${tournament.title}»: ${HUMAN_STATUS[newStatus]}`,
+      html,
+    });
   }
 }
 
