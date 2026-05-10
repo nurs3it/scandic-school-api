@@ -168,10 +168,10 @@ model TournamentRegistration {
   tournament   Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
 
   participantName String
-  parentName      String?
   phone           String
   email           String?
-  grade           String?
+  fideId          String?
+  birthYear       Int?
   comment         String?
 
   receiptUrl  String?

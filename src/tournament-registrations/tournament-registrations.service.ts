@@ -41,10 +41,10 @@ export class TournamentRegistrationsService {
       data: {
         tournamentId: tournament.id,
         participantName: dto.participantName,
-        parentName: dto.parentName,
         phone: dto.phone,
         email: dto.email,
-        grade: dto.grade,
+        fideId: dto.fideId,
+        birthYear: dto.birthYear,
         comment: dto.comment,
         receiptUrl,
         paymentNote: dto.paymentNote,
@@ -73,9 +73,9 @@ export class TournamentRegistrationsService {
     if (q.search) {
       where.OR = [
         { participantName: { contains: q.search, mode: 'insensitive' } },
-        { parentName: { contains: q.search, mode: 'insensitive' } },
         { phone: { contains: q.search } },
         { email: { contains: q.search, mode: 'insensitive' } },
+        { fideId: { contains: q.search, mode: 'insensitive' } },
       ];
     }
     const [items, total] = await Promise.all([

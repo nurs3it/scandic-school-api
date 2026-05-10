@@ -28,10 +28,10 @@ export function tournamentRegistrationAdminHtml(
         <tr><td style="padding:32px;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size:14px;line-height:1.6;">
             <tr><td style="padding:6px 0;color:${BRAND.textMuted};width:160px;">Участник</td><td style="padding:6px 0;font-weight:600;">${escHtml(reg.participantName)}</td></tr>
-            ${reg.parentName ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};">Родитель</td><td style="padding:6px 0;">${escHtml(reg.parentName)}</td></tr>` : ''}
+            ${reg.birthYear ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};">Год рождения</td><td style="padding:6px 0;">${reg.birthYear}</td></tr>` : ''}
+            ${reg.fideId ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};">FIDE ID</td><td style="padding:6px 0;">${escHtml(reg.fideId)}</td></tr>` : ''}
             <tr><td style="padding:6px 0;color:${BRAND.textMuted};">Телефон</td><td style="padding:6px 0;"><a href="tel:${escHtml(reg.phone)}" style="color:${BRAND.secondaryMid};text-decoration:none;">${escHtml(reg.phone)}</a></td></tr>
             ${reg.email ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};">Email</td><td style="padding:6px 0;"><a href="mailto:${escHtml(reg.email)}" style="color:${BRAND.secondaryMid};text-decoration:none;">${escHtml(reg.email)}</a></td></tr>` : ''}
-            ${reg.grade ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};">Класс</td><td style="padding:6px 0;">${escHtml(reg.grade)}</td></tr>` : ''}
             ${reg.comment ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};vertical-align:top;">Комментарий</td><td style="padding:6px 0;white-space:pre-wrap;">${escHtml(reg.comment)}</td></tr>` : ''}
             ${reg.paymentNote ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};vertical-align:top;">Оплата</td><td style="padding:6px 0;white-space:pre-wrap;">${escHtml(reg.paymentNote)}</td></tr>` : ''}
             ${reg.receiptUrl ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};">Чек</td><td style="padding:6px 0;"><a href="${escHtml(reg.receiptUrl)}" style="color:${BRAND.secondaryMid};">Открыть файл</a></td></tr>` : ''}
