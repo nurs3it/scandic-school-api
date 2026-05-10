@@ -44,7 +44,7 @@ export class TournamentRegistrationsService {
         phone: dto.phone,
         email: dto.email,
         fideId: dto.fideId,
-        birthYear: dto.birthYear,
+        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
         comment: dto.comment,
         receiptUrl,
         paymentNote: dto.paymentNote,

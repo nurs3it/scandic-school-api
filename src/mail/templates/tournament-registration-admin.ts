@@ -28,7 +28,7 @@ export function tournamentRegistrationAdminHtml(
         <tr><td style="padding:32px;">
           <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="font-size:14px;line-height:1.6;">
             <tr><td style="padding:6px 0;color:${BRAND.textMuted};width:160px;">Участник</td><td style="padding:6px 0;font-weight:600;">${escHtml(reg.participantName)}</td></tr>
-            ${reg.birthYear ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};">Год рождения</td><td style="padding:6px 0;">${reg.birthYear}</td></tr>` : ''}
+            ${reg.birthDate ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};">Дата рождения</td><td style="padding:6px 0;">${new Date(reg.birthDate).toLocaleDateString('ru-RU')}</td></tr>` : ''}
             ${reg.fideId ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};">FIDE ID</td><td style="padding:6px 0;">${escHtml(reg.fideId)}</td></tr>` : ''}
             <tr><td style="padding:6px 0;color:${BRAND.textMuted};">Телефон</td><td style="padding:6px 0;"><a href="tel:${escHtml(reg.phone)}" style="color:${BRAND.secondaryMid};text-decoration:none;">${escHtml(reg.phone)}</a></td></tr>
             ${reg.email ? `<tr><td style="padding:6px 0;color:${BRAND.textMuted};">Email</td><td style="padding:6px 0;"><a href="mailto:${escHtml(reg.email)}" style="color:${BRAND.secondaryMid};text-decoration:none;">${escHtml(reg.email)}</a></td></tr>` : ''}

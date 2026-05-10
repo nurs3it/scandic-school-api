@@ -136,7 +136,7 @@ export function registrationsListPage(
       return `
       <tr>
         <td style="font-size:12px;color:#64748b;white-space:nowrap;">${dateStr}</td>
-        <td><span class="name">${escHtml(item.participantName)}</span>${item.birthYear ? `<br/><span style="font-size:11px;color:#64748b;">Год рожд.: ${item.birthYear}</span>` : ''}${item.fideId ? `<br/><span style="font-size:11px;color:#64748b;">FIDE ID: ${escHtml(item.fideId)}</span>` : ''}</td>
+        <td><span class="name">${escHtml(item.participantName)}</span>${item.birthDate ? `<br/><span style="font-size:11px;color:#64748b;">Д.р.: ${new Date(item.birthDate).toLocaleDateString('ru-RU')}</span>` : ''}${item.fideId ? `<br/><span style="font-size:11px;color:#64748b;">FIDE ID: ${escHtml(item.fideId)}</span>` : ''}</td>
         <td style="font-size:13px;">${escHtml(item.phone)}</td>
         <td style="font-size:13px;">${item.email ? escHtml(item.email) : '&#8212;'}</td>
         <td><a href="/admin/tournaments/${item.tournament.id}/edit" style="font-size:12px;color:#6366f1;text-decoration:none;">${escHtml(item.tournament.title)}</a></td>
@@ -323,7 +323,7 @@ export function registrationDetailPage(
           <div class="detail-label">Участник</div>
           <div class="detail-value" style="font-size:18px;font-weight:700;">${escHtml(reg.participantName)}</div>
 
-          ${reg.birthYear ? `<div class="detail-label">Год рождения</div><div class="detail-value">${reg.birthYear}</div>` : ''}
+          ${reg.birthDate ? `<div class="detail-label">Дата рождения</div><div class="detail-value">${new Date(reg.birthDate).toLocaleDateString('ru-RU')}</div>` : ''}
 
           ${reg.fideId ? `<div class="detail-label">FIDE ID</div><div class="detail-value">${escHtml(reg.fideId)}</div>` : ''}
 

@@ -171,7 +171,7 @@ model TournamentRegistration {
   phone           String
   email           String?
   fideId          String?
-  birthYear       Int?
+  birthDate       DateTime? @db.Date
   comment         String?
 
   receiptUrl  String?
