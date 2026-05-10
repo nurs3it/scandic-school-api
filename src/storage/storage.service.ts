@@ -12,11 +12,27 @@ const IMAGE_MIMES = [
 
 const RECEIPT_MIMES = [...IMAGE_MIMES, 'application/pdf'];
 
+const ATTACH_MIMES = [
+  ...IMAGE_MIMES,
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/zip',
+  'application/x-zip-compressed',
+  'text/plain',
+  'text/csv',
+];
+
 const BUCKETS = {
   merch: 'merch-images',
   clubs: 'clubs',
   tournaments: 'tournaments',
   receipts: 'receipts',
+  attachments: 'attachments',
 } as const;
 
 type BucketKey = keyof typeof BUCKETS;
@@ -38,6 +54,7 @@ export class StorageService implements OnModuleInit {
     await this.ensureBucket(BUCKETS.clubs, IMAGE_MIMES);
     await this.ensureBucket(BUCKETS.tournaments, IMAGE_MIMES);
     await this.ensureBucket(BUCKETS.receipts, RECEIPT_MIMES);
+    await this.ensureBucket(BUCKETS.attachments, ATTACH_MIMES);
   }
 
   private async ensureBucket(name: string, mimes: string[]) {
@@ -85,6 +102,18 @@ export class StorageService implements OnModuleInit {
   ): Promise<string> {
     return this.uploadTo(
       'merch',
+      { buffer, originalname, mimetype } as Express.Multer.File,
+      'news/',
+    );
+  }
+
+  async uploadNewsAttach(
+    buffer: Buffer,
+    originalname: string,
+    mimetype: string,
+  ): Promise<string> {
+    return this.uploadTo(
+      'attachments',
       { buffer, originalname, mimetype } as Express.Multer.File,
       'news/',
     );

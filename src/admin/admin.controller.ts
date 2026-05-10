@@ -85,6 +85,39 @@ const uploadConfig = {
   fileFilter: imageFileFilter,
 };
 
+const ALLOWED_ATTACH_MIME_TYPES = [
+  ...ALLOWED_MIME_TYPES,
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/zip',
+  'application/x-zip-compressed',
+  'text/plain',
+  'text/csv',
+];
+
+function attachFileFilter(
+  _req: Request,
+  file: Express.Multer.File,
+  cb: (error: Error | null, acceptFile: boolean) => void,
+) {
+  if (ALLOWED_ATTACH_MIME_TYPES.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Недопустимый тип файла: ${file.mimetype}`), false);
+  }
+}
+
+const attachUploadConfig = {
+  storage: memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: attachFileFilter,
+};
+
 // ─── Auth constants ───────────────────────────────────────────────────────────
 
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
@@ -612,12 +645,16 @@ export class AdminController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) return res.json({ success: 0 });
-    const url = await this.storage.uploadNewsImage(
-      file.buffer,
-      file.originalname,
-      file.mimetype,
-    );
-    return res.json({ success: 1, file: { url } });
+    try {
+      const url = await this.storage.uploadNewsImage(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+      );
+      return res.json({ success: 1, file: { url } });
+    } catch (e: any) {
+      return res.json({ success: 0, message: e?.message ?? 'Upload failed' });
+    }
   }
 
   @Post('news/upload-image-url')
@@ -635,27 +672,31 @@ export class AdminController {
 
   @Post('news/upload-file')
   @UseGuards(AdminGuard)
-  @UseInterceptors(FileInterceptor('file', uploadConfig))
+  @UseInterceptors(FileInterceptor('file', attachUploadConfig))
   async newsUploadFile(
     @Res() res: Response,
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) return res.json({ success: 0 });
-    const url = await this.storage.uploadNewsImage(
-      file.buffer,
-      file.originalname,
-      file.mimetype,
-    );
-    const ext = file.originalname.split('.').pop()?.toLowerCase() || '';
-    return res.json({
-      success: 1,
-      file: {
-        url,
-        name: file.originalname,
-        size: file.size,
-        extension: ext,
-      },
-    });
+    try {
+      const url = await this.storage.uploadNewsAttach(
+        file.buffer,
+        file.originalname,
+        file.mimetype,
+      );
+      const ext = file.originalname.split('.').pop()?.toLowerCase() || '';
+      return res.json({
+        success: 1,
+        file: {
+          url,
+          name: file.originalname,
+          size: file.size,
+          extension: ext,
+        },
+      });
+    } catch (e: any) {
+      return res.json({ success: 0, message: e?.message ?? 'Upload failed' });
+    }
   }
 
   // ── News create ────────────────────────────────────────────────────────────
