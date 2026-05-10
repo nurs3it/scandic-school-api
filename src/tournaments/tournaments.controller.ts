@@ -50,6 +50,18 @@ export class TournamentsController {
     return this.tournaments.findBySlugPublic(slug);
   }
 
+  @Get(':slug/registrations')
+  @ApiOkResponse({ description: 'Public paginated list of registrations for a tournament' })
+  listRegistrations(
+    @Param('slug') slug: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    const p = Math.max(1, page ? parseInt(page, 10) || 1 : 1);
+    const ps = Math.min(200, Math.max(1, pageSize ? parseInt(pageSize, 10) || 200 : 200));
+    return this.registrations.listPublicBySlug(slug, p, ps);
+  }
+
   @Post(':slug/register')
   @ApiConsumes('multipart/form-data')
   @UseInterceptors(FileInterceptor('receipt', RECEIPT_UPLOAD))

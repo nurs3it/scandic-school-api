@@ -59,6 +59,38 @@ export class TournamentRegistrationsService {
     return { id: registration.id, status: registration.status };
   }
 
+  async listPublicBySlug(slug: string, page = 1, pageSize = 200) {
+    const tournament = await this.prisma.tournament.findUnique({
+      where: { slug },
+      select: { id: true },
+    });
+    if (!tournament) throw new NotFoundException(`Tournament "${slug}" not found`);
+    const where: Prisma.TournamentRegistrationWhereInput = {
+      tournamentId: tournament.id,
+    };
+    const [items, total] = await Promise.all([
+      this.prisma.tournamentRegistration.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        select: {
+          id: true,
+          participantName: true,
+          phone: true,
+          email: true,
+          fideId: true,
+          birthDate: true,
+          comment: true,
+          status: true,
+          createdAt: true,
+        },
+      }),
+      this.prisma.tournamentRegistration.count({ where }),
+    ]);
+    return { items, total, page, pageSize };
+  }
+
   async listAdmin(q: RegistrationsQueryDto) {
     const page = q.page ?? 1;
     const pageSize = q.pageSize ?? 50;
