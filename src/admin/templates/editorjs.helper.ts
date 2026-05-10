@@ -82,25 +82,29 @@ export function editorjsScripts(opts: EditorjsScriptsOpts): string {
   return `${CDN_TAGS}
 <script>
 (function () {
+  function b64ToUtf8(b64) {
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder('utf-8').decode(bytes);
+  }
+
   var initialData = null;
-  try {
-    var raw = atob('${opts.contentB64}');
-    if (raw) {
-      var parsed = JSON.parse(raw);
+  var rawText = '';
+  try { rawText = b64ToUtf8('${opts.contentB64}'); } catch(_) {}
+
+  if (rawText) {
+    try {
+      var parsed = JSON.parse(rawText);
       if (parsed && Array.isArray(parsed.blocks)) initialData = parsed;
-    }
-  } catch(_) {}
+    } catch(_) {}
+  }
 
   // Legacy markdown / plain text fallback — wrap in a single paragraph block
-  if (!initialData) {
-    try {
-      var legacy = atob('${opts.contentB64}');
-      if (legacy && legacy.trim()) {
-        initialData = {
-          blocks: [{ type: 'paragraph', data: { text: legacy.replace(/</g, '&lt;').replace(/\\n/g, '<br>') } }],
-        };
-      }
-    } catch(_) {}
+  if (!initialData && rawText && rawText.trim()) {
+    initialData = {
+      blocks: [{ type: 'paragraph', data: { text: rawText.replace(/</g, '&lt;').replace(/\\n/g, '<br>') } }],
+    };
   }
 
   var editorConfig = {
