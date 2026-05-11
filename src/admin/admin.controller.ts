@@ -679,17 +679,21 @@ export class AdminController {
   ) {
     if (!file) return res.json({ success: 0 });
     try {
+      // multer parses multipart filename as latin1 — decode back to utf8 so Cyrillic is preserved
+      const originalName = Buffer.from(file.originalname, 'latin1').toString(
+        'utf8',
+      );
       const url = await this.storage.uploadNewsAttach(
         file.buffer,
-        file.originalname,
+        originalName,
         file.mimetype,
       );
-      const ext = file.originalname.split('.').pop()?.toLowerCase() || '';
+      const ext = originalName.split('.').pop()?.toLowerCase() || '';
       return res.json({
         success: 1,
         file: {
           url,
-          name: file.originalname,
+          name: originalName,
           size: file.size,
           extension: ext,
         },
