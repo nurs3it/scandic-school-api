@@ -123,6 +123,30 @@ export class TournamentRegistrationsService {
     return { items, total, page, pageSize };
   }
 
+  async exportAdmin(q: Omit<RegistrationsQueryDto, 'page' | 'pageSize'>) {
+    const where: Prisma.TournamentRegistrationWhereInput = {};
+    if (q.tournamentId) where.tournamentId = q.tournamentId;
+    if (q.status) where.status = q.status;
+    if (q.from || q.to) {
+      where.createdAt = {};
+      if (q.from) (where.createdAt as Prisma.DateTimeFilter).gte = new Date(q.from);
+      if (q.to) (where.createdAt as Prisma.DateTimeFilter).lte = new Date(q.to);
+    }
+    if (q.search) {
+      where.OR = [
+        { participantName: { contains: q.search, mode: 'insensitive' } },
+        { phone: { contains: q.search } },
+        { email: { contains: q.search, mode: 'insensitive' } },
+        { fideId: { contains: q.search, mode: 'insensitive' } },
+      ];
+    }
+    return this.prisma.tournamentRegistration.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: { tournament: { select: { id: true, title: true, slug: true } } },
+    });
+  }
+
   async findByIdAdmin(id: number) {
     const row = await this.prisma.tournamentRegistration.findUnique({
       where: { id },

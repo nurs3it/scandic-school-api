@@ -44,6 +44,24 @@ const LIST_STYLES = `
   }
   .pagination a:hover { border-color:#f4a724;background:#fffbeb; }
   .pagination .current { background:linear-gradient(135deg,#f4a724,#e8890a);color:#0f172a;border-color:#f4a724; }
+  .export-bar {
+    background:#fff;border-radius:14px;padding:16px 20px;margin-bottom:20px;
+    border:1px solid #f1f5f9;box-shadow:0 1px 3px rgba(0,0,0,0.04);
+    display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+  }
+  .export-actions { display:flex;flex-wrap:wrap;gap:8px; }
+  .export-btn {
+    display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:8px;
+    border:1.5px solid #e2e8f0;font-size:13px;font-weight:700;color:#0f172a;background:#fff;
+    text-decoration:none;transition:all 0.2s;cursor:pointer;
+  }
+  .export-btn:hover { border-color:#f4a724;background:#fffbeb; }
+  .export-btn.primary { background:linear-gradient(135deg,#f4a724,#e8890a);border-color:#f4a724; }
+  .export-warn {
+    flex:1;min-width:260px;font-size:12px;color:#92400e;line-height:1.5;
+    background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:10px 14px;
+  }
+  .export-warn b { color:#7c2d12; }
 `;
 
 const DETAIL_STYLES = `
@@ -233,6 +251,35 @@ export function registrationsListPage(
         <input type="hidden" name="pageSize" value="${query.pageSize}" />
       </form>
     </div>
+
+    ${(() => {
+      const exportParams = new URLSearchParams();
+      if (query.tournamentId) exportParams.set('tournamentId', String(query.tournamentId));
+      if (query.status) exportParams.set('status', query.status);
+      if (query.from) exportParams.set('from', query.from);
+      if (query.to) exportParams.set('to', query.to);
+      if (query.search) exportParams.set('search', query.search);
+      const hasFilters =
+        !!(query.tournamentId || query.status || query.from || query.to || query.search);
+      const qs = exportParams.toString();
+      const url = (fmt: string): string => {
+        const p = new URLSearchParams(qs);
+        p.set('format', fmt);
+        return `/admin/tournament-registrations/export?${p.toString()}`;
+      };
+      const warn = hasFilters
+        ? `<b>Внимание:</b> применённые фильтры (турнир, статус, даты, поиск) <b>будут учтены</b> в выгрузке. Пагинация игнорируется — выгружаются <b>все ${total}</b> записей, соответствующих фильтрам. Чтобы выгрузить весь список, сначала <a href="/admin/tournament-registrations" style="color:#7c2d12;text-decoration:underline;">сбросьте фильтры</a>.`
+        : `<b>Внимание:</b> пагинация игнорируется — будут выгружены <b>все ${total}</b> записей. Если применить фильтры выше, они будут учтены в выгрузке.`;
+      return `
+    <div class="export-bar">
+      <div class="export-warn">&#9888;&#65039; ${warn}</div>
+      <div class="export-actions">
+        <a href="${escHtml(url('xlsx'))}" class="export-btn primary">&#128202; XLSX</a>
+        <a href="${escHtml(url('pdf'))}" class="export-btn">&#128196; PDF</a>
+        <a href="${escHtml(url('txt'))}" class="export-btn">&#128221; TXT</a>
+      </div>
+    </div>`;
+    })()}
 
     <div class="table-card">
       <div class="table-header">

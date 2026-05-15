@@ -26,6 +26,13 @@ import { NewsService } from '../news/news.service';
 import { ClubsService } from '../clubs/clubs.service';
 import { TournamentsService } from '../tournaments/tournaments.service';
 import { TournamentRegistrationsService } from '../tournament-registrations/tournament-registrations.service';
+import {
+  buildPdf,
+  buildTxt,
+  buildXlsx,
+  describeFilters,
+  type ExportRow,
+} from '../tournament-registrations/registrations-export';
 import { AdminGuard, isAuthenticated, SESSION_KEY } from './admin.guard';
 import {
   loginPage,
@@ -1093,6 +1100,70 @@ export class AdminController {
       orderBy: { startDate: 'desc' },
     });
     return res.send(registrationsListPage(items as any, query, total, tournaments));
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('tournament-registrations/export')
+  async registrationsExport(@Req() req: Request, @Res() res: Response) {
+    const q: any = req.query;
+    const format = String(q.format || 'xlsx').toLowerCase();
+    const filter = {
+      tournamentId: q.tournamentId ? parseInt(q.tournamentId, 10) : undefined,
+      status: q.status || undefined,
+      from: q.from || undefined,
+      to: q.to || undefined,
+      search: q.search || undefined,
+    };
+
+    const rows = (await this.registrations.exportAdmin(filter as any)) as ExportRow[];
+
+    let tournamentTitle: string | undefined;
+    if (filter.tournamentId) {
+      const t = await this.prisma.tournament.findUnique({
+        where: { id: filter.tournamentId },
+        select: { title: true },
+      });
+      tournamentTitle = t?.title;
+    }
+    const filterSummary = describeFilters({ ...filter, tournamentTitle });
+
+    const stamp = new Date().toISOString().slice(0, 16).replace(/[T:]/g, '-');
+    const baseName = `tournament-registrations-${stamp}`;
+
+    if (format === 'xlsx') {
+      const buf = await buildXlsx(rows);
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${baseName}.xlsx"`,
+      );
+      return res.send(buf);
+    }
+
+    if (format === 'pdf') {
+      const buf = await buildPdf(rows, filterSummary);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${baseName}.pdf"`,
+      );
+      return res.send(buf);
+    }
+
+    if (format === 'txt' || format === 'text') {
+      const txt = buildTxt(rows, filterSummary);
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${baseName}.txt"`,
+      );
+      return res.send(txt);
+    }
+
+    return res.status(400).send('Unsupported format. Use xlsx, pdf, or txt.');
   }
 
   @UseGuards(AdminGuard)
