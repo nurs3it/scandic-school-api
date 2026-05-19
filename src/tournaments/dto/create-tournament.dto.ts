@@ -18,6 +18,7 @@ import {
 } from 'class-validator';
 import { PaymentMethod } from '@prisma/client';
 import { StageDto } from './stage.dto';
+import { GalleryItemDto, WinnerDto } from './recap.dto';
 
 export class CreateTournamentDto {
   @ApiProperty()
@@ -100,4 +101,18 @@ export class CreateTournamentDto {
   @ApiPropertyOptional()
   @IsOptional() @IsString() @Matches(/^[a-z0-9-]+$/) @MaxLength(200)
   slug?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional() @IsString() @MaxLength(20000)
+  recapSummary?: string;
+
+  @ApiPropertyOptional({ type: [WinnerDto] })
+  @IsOptional() @IsArray() @ArrayMaxSize(100)
+  @ValidateNested({ each: true }) @Type(() => WinnerDto)
+  winners?: WinnerDto[];
+
+  @ApiPropertyOptional({ type: [GalleryItemDto] })
+  @IsOptional() @IsArray() @ArrayMaxSize(500)
+  @ValidateNested({ each: true }) @Type(() => GalleryItemDto)
+  gallery?: GalleryItemDto[];
 }

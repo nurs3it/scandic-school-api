@@ -132,4 +132,10 @@ export class StorageService implements OnModuleInit {
   uploadTournamentReceipt(file: Express.Multer.File) {
     return this.uploadTo('receipts', file);
   }
+  uploadTournamentWinnerPhoto(file: Express.Multer.File) {
+    return this.uploadTo('tournaments', file, 'winners/');
+  }
+  uploadTournamentGalleryPhoto(file: Express.Multer.File) {
+    return this.uploadTo('tournaments', file, 'gallery/');
+  }
 }

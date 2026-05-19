@@ -16,6 +16,7 @@ import {
 import {
   FileInterceptor,
   FileFieldsInterceptor,
+  AnyFilesInterceptor,
 } from '@nestjs/platform-express';
 import { ApiExcludeController } from '@nestjs/swagger';
 import type { Response, Request } from 'express';
@@ -942,6 +943,77 @@ export class AdminController {
       }));
   }
 
+  /**
+   * Builds winners array from form body + uploaded files.
+   * Files come keyed as `winner_photo_<idx>` from AnyFilesInterceptor.
+   * Existing photoUrl is preserved via hidden `winners[i][existingPhoto]`.
+   */
+  private async parseWinnersFromBody(
+    body: any,
+    files: Express.Multer.File[],
+  ): Promise<{ place: number; category?: string; name: string; club?: string; note?: string; photoUrl?: string }[]> {
+    const raw = body.winners;
+    if (!raw || typeof raw !== 'object') return [];
+    const arr = Array.isArray(raw) ? raw : Object.values(raw);
+    const result: any[] = [];
+    for (let i = 0; i < arr.length; i++) {
+      const w = (arr as any[])[i];
+      if (!w || !w.name || String(w.name).trim() === '') continue;
+      const place = parseInt(w.place, 10);
+      if (!Number.isFinite(place) || place < 1) continue;
+      const newFile = files.find((f) => f.fieldname === `winner_photo_${i}`);
+      let photoUrl: string | undefined = w.existingPhoto || undefined;
+      if (newFile) {
+        photoUrl = await this.storage.uploadTournamentWinnerPhoto(newFile);
+      }
+      result.push({
+        place,
+        category: w.category ? String(w.category).slice(0, 120).trim() || undefined : undefined,
+        name: String(w.name).slice(0, 200).trim(),
+        club: w.club ? String(w.club).slice(0, 200).trim() || undefined : undefined,
+        note: w.note ? String(w.note).slice(0, 500).trim() || undefined : undefined,
+        photoUrl,
+      });
+    }
+    return result;
+  }
+
+  /**
+   * Builds gallery array from form body + uploaded files.
+   * Each row needs either a new file (`gallery_photo_<idx>`) or an existing URL.
+   */
+  private async parseGalleryFromBody(
+    body: any,
+    files: Express.Multer.File[],
+  ): Promise<{ url: string; caption?: string }[]> {
+    const raw = body.gallery;
+    if (!raw || typeof raw !== 'object') return [];
+    const arr = Array.isArray(raw) ? raw : Object.values(raw);
+    const result: any[] = [];
+    for (let i = 0; i < arr.length; i++) {
+      const g = (arr as any[])[i];
+      if (!g) continue;
+      const newFile = files.find((f) => f.fieldname === `gallery_photo_${i}`);
+      let url: string | undefined = g.existingUrl || undefined;
+      if (newFile) {
+        url = await this.storage.uploadTournamentGalleryPhoto(newFile);
+      }
+      if (!url) continue;
+      result.push({
+        url,
+        caption: g.caption ? String(g.caption).slice(0, 300).trim() || undefined : undefined,
+      });
+    }
+    return result;
+  }
+
+  private pickBannerFile(files: Express.Multer.File[]): Express.Multer.File | undefined {
+    return files.find((f) => f.fieldname === 'banner');
+  }
+  private pickKaspiQrFile(files: Express.Multer.File[]): Express.Multer.File | undefined {
+    return files.find((f) => f.fieldname === 'kaspiQr');
+  }
+
   @UseGuards(AdminGuard)
   @Get('tournaments')
   async tournamentsList(@Req() req: Request, @Res() res: Response) {
@@ -966,26 +1038,27 @@ export class AdminController {
 
   @UseGuards(AdminGuard)
   @Post('tournaments')
-  @UseInterceptors(FileFieldsInterceptor(
-    [{ name: 'banner', maxCount: 1 }, { name: 'kaspiQr', maxCount: 1 }],
-    uploadConfig,
-  ))
+  @UseInterceptors(AnyFilesInterceptor(uploadConfig))
   async tournamentCreate(
     @Body() body: any,
-    @UploadedFiles() files: { banner?: Express.Multer.File[]; kaspiQr?: Express.Multer.File[] },
+    @UploadedFiles() files: Express.Multer.File[],
     @Res() res: Response,
   ) {
     const clubs = await this.prisma.club.findMany({
       select: { id: true, name: true }, orderBy: { order: 'asc' },
     });
     try {
-      const banner = files?.banner?.[0];
+      const all = files ?? [];
+      const banner = this.pickBannerFile(all);
       if (!banner) throw new Error('Баннер обязателен');
       const bannerUrl = await this.storage.uploadTournamentBanner(banner);
+      const kaspiQrFile = this.pickKaspiQrFile(all);
       let kaspiQrUrl: string | undefined;
-      if (files?.kaspiQr?.[0]) {
-        kaspiQrUrl = await this.storage.uploadTournamentQr(files.kaspiQr[0]);
+      if (kaspiQrFile) {
+        kaspiQrUrl = await this.storage.uploadTournamentQr(kaspiQrFile);
       }
+      const winners = await this.parseWinnersFromBody(body, all);
+      const gallery = await this.parseGalleryFromBody(body, all);
       await this.tournaments.create({
         title: body.title,
         shortDescription: body.shortDescription,
@@ -998,6 +1071,9 @@ export class AdminController {
           ? new Date(body.registrationDeadline).toISOString() : undefined,
         location: body.location || undefined,
         stages: this.parseStagesFromBody(body),
+        recapSummary: body.recapSummary ? String(body.recapSummary).slice(0, 20000) : undefined,
+        winners,
+        gallery,
         isFree: body.isFree === '1',
         price: body.price ? parseInt(body.price, 10) : 0,
         paymentMethod: body.paymentMethod,
@@ -1027,17 +1103,17 @@ export class AdminController {
 
   @UseGuards(AdminGuard)
   @Post('tournaments/:id')
-  @UseInterceptors(FileFieldsInterceptor(
-    [{ name: 'banner', maxCount: 1 }, { name: 'kaspiQr', maxCount: 1 }],
-    uploadConfig,
-  ))
+  @UseInterceptors(AnyFilesInterceptor(uploadConfig))
   async tournamentUpdate(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: any,
-    @UploadedFiles() files: { banner?: Express.Multer.File[]; kaspiQr?: Express.Multer.File[] },
+    @UploadedFiles() files: Express.Multer.File[],
     @Res() res: Response,
   ) {
     try {
+      const all = files ?? [];
+      const winners = await this.parseWinnersFromBody(body, all);
+      const gallery = await this.parseGalleryFromBody(body, all);
       const patch: any = {
         title: body.title,
         shortDescription: body.shortDescription,
@@ -1049,6 +1125,9 @@ export class AdminController {
           ? new Date(body.registrationDeadline).toISOString() : null,
         location: body.location || undefined,
         stages: this.parseStagesFromBody(body),
+        recapSummary: body.recapSummary ? String(body.recapSummary).slice(0, 20000) : null,
+        winners,
+        gallery,
         isFree: body.isFree === '1',
         price: body.price ? parseInt(body.price, 10) : 0,
         paymentMethod: body.paymentMethod,
@@ -1059,8 +1138,10 @@ export class AdminController {
         clubId: body.clubId ? parseInt(body.clubId, 10) : null,
         slug: body.slug || undefined,
       };
-      if (files?.banner?.[0]) patch.bannerUrl = await this.storage.uploadTournamentBanner(files.banner[0]);
-      if (files?.kaspiQr?.[0]) patch.kaspiQrUrl = await this.storage.uploadTournamentQr(files.kaspiQr[0]);
+      const bannerFile = this.pickBannerFile(all);
+      if (bannerFile) patch.bannerUrl = await this.storage.uploadTournamentBanner(bannerFile);
+      const kaspiQrFile = this.pickKaspiQrFile(all);
+      if (kaspiQrFile) patch.kaspiQrUrl = await this.storage.uploadTournamentQr(kaspiQrFile);
       await this.tournaments.update(id, patch);
       return res.redirect('/admin/tournaments?updated=1');
     } catch (e: any) {

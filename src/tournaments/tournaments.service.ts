@@ -108,6 +108,9 @@ export class TournamentsService {
           : null,
         location: dto.location,
         stages: (dto.stages ?? []) as unknown as Prisma.InputJsonValue,
+        recapSummary: dto.recapSummary ?? null,
+        winners: (dto.winners ?? []) as unknown as Prisma.InputJsonValue,
+        gallery: (dto.gallery ?? []) as unknown as Prisma.InputJsonValue,
         isActive: dto.isActive ?? true,
         isRegistrationOpen: dto.isRegistrationOpen ?? true,
         order: dto.order ?? 0,
@@ -160,6 +163,16 @@ export class TournamentsService {
           dto.stages !== undefined
             ? (dto.stages as unknown as Prisma.InputJsonValue)
             : (existing.stages as Prisma.InputJsonValue),
+        recapSummary:
+          dto.recapSummary !== undefined ? dto.recapSummary : existing.recapSummary,
+        winners:
+          dto.winners !== undefined
+            ? (dto.winners as unknown as Prisma.InputJsonValue)
+            : (existing.winners as Prisma.InputJsonValue),
+        gallery:
+          dto.gallery !== undefined
+            ? (dto.gallery as unknown as Prisma.InputJsonValue)
+            : (existing.gallery as Prisma.InputJsonValue),
         isActive: dto.isActive ?? existing.isActive,
         isRegistrationOpen: dto.isRegistrationOpen ?? existing.isRegistrationOpen,
         order: dto.order ?? existing.order,

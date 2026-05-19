@@ -151,6 +151,10 @@ model Tournament {
   isRegistrationOpen Boolean @default(true)
   order              Int     @default(0)
 
+  recapSummary String? @db.Text
+  winners      Json    @default("[]")
+  gallery      Json    @default("[]")
+
   clubId        Int?
   club          Club?                    @relation(fields: [clubId], references: [id], onDelete: SetNull)
   registrations TournamentRegistration[]

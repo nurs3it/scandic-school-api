@@ -194,8 +194,24 @@ type TournamentStage = {
   description?: string;
 };
 
+type WinnerEntry = {
+  place: number;
+  category?: string;
+  name: string;
+  club?: string;
+  note?: string;
+  photoUrl?: string;
+};
+
+type GalleryEntry = {
+  url: string;
+  caption?: string;
+};
+
 type TournamentWithStages = Tournament & {
   stages?: TournamentStage[] | unknown;
+  winners?: WinnerEntry[] | unknown;
+  gallery?: GalleryEntry[] | unknown;
   club?: { id: number; name: string } | null;
 };
 
@@ -278,6 +294,73 @@ export function tournamentFormPage(
       stagesArray = [];
     }
   }
+
+  // Winners
+  let winnersArray: WinnerEntry[] = [];
+  if (tournament?.winners) {
+    try {
+      const raw = tournament.winners;
+      if (Array.isArray(raw)) winnersArray = raw as WinnerEntry[];
+      else if (typeof raw === 'string') {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) winnersArray = parsed as WinnerEntry[];
+      }
+    } catch {
+      winnersArray = [];
+    }
+  }
+
+  // Gallery
+  let galleryArray: GalleryEntry[] = [];
+  if (tournament?.gallery) {
+    try {
+      const raw = tournament.gallery;
+      if (Array.isArray(raw)) galleryArray = raw as GalleryEntry[];
+      else if (typeof raw === 'string') {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) galleryArray = parsed as GalleryEntry[];
+      }
+    } catch {
+      galleryArray = [];
+    }
+  }
+
+  const winnersHtml = winnersArray
+    .map(
+      (w, i) => `
+    <div class="winner-row" data-idx="${i}" style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:8px;background:#fff;">
+      <div style="display:grid;grid-template-columns:80px 1fr 1fr auto;gap:8px;align-items:center;">
+        <input data-field="place" type="number" min="1" placeholder="Место" value="${escHtml(String(w.place ?? ''))}" style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;text-align:center;font-weight:700;" />
+        <input data-field="name" placeholder="Имя победителя *" maxlength="200" value="${escHtml(w.name ?? '')}" style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;" />
+        <input data-field="category" placeholder="Категория (U-12, Девочки, ...)" maxlength="120" value="${escHtml(w.category ?? '')}" style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;" />
+        <button type="button" data-action="remove-winner" style="color:#dc2626;background:none;border:none;cursor:pointer;font-size:20px;">&#215;</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+        <input data-field="club" placeholder="Клуб/школа (опц.)" maxlength="200" value="${escHtml(w.club ?? '')}" style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;" />
+        <input data-field="note" placeholder="Примечание (опц.)" maxlength="500" value="${escHtml(w.note ?? '')}" style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;" />
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+        ${w.photoUrl ? `<img data-current-photo src="${escHtml(w.photoUrl)}" alt="" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #e2e8f0;" />` : '<div data-current-photo style="width:48px;height:48px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:18px;color:#94a3b8;">&#128100;</div>'}
+        <input data-field="existing-photo" type="hidden" value="${escHtml(w.photoUrl ?? '')}" />
+        <input data-field="photo" type="file" accept="image/*" style="font-size:12px;flex:1;" />
+        <span style="font-size:11px;color:#94a3b8;">Фото опц.</span>
+      </div>
+    </div>`,
+    )
+    .join('');
+
+  const galleryHtml = galleryArray
+    .map(
+      (g, i) => `
+    <div class="gallery-row" data-idx="${i}" style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#fff;">
+      ${g.url ? `<img src="${escHtml(g.url)}" alt="" style="width:100%;height:120px;object-fit:cover;border-radius:6px;margin-bottom:8px;" />` : ''}
+      <input data-field="existing-url" type="hidden" value="${escHtml(g.url ?? '')}" />
+      <input data-field="photo" type="file" accept="image/*" style="font-size:12px;width:100%;margin-bottom:6px;" />
+      <input data-field="caption" placeholder="Подпись (опц.)" maxlength="300" value="${escHtml(g.caption ?? '')}" style="padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:inherit;width:100%;" />
+      <button type="button" data-action="remove-gallery" style="margin-top:6px;width:100%;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;cursor:pointer;font-size:12px;padding:4px;">Удалить</button>
+    </div>`,
+    )
+    .join('');
 
   const stagesHtml = stagesArray
     .map(
@@ -440,6 +523,61 @@ export function tournamentFormPage(
         </fieldset>
 
         <fieldset>
+          <legend>Итоги турнира</legend>
+          <p style="font-size:12px;color:#64748b;margin:0 0 16px;">Заполняется после завершения турнира. На сайте секция показывается автоматически, когда дата окончания в прошлом и хотя бы одно поле заполнено.</p>
+
+          <div class="form-group full" style="margin-bottom:20px;">
+            <label>Текст-итог (Markdown)</label>
+            <textarea name="recapSummary" rows="5" maxlength="20000" placeholder="**Как прошёл турнир**&#10;&#10;Несколько абзацев о ходе турнира, ярких моментах, благодарностях. Поддерживается Markdown.">${escHtml(tournament?.recapSummary ?? '')}</textarea>
+            <p class="hint-text">Поддерживается Markdown: **жирный**, *курсив*, [ссылки](url), списки.</p>
+          </div>
+
+          <div style="margin-bottom:24px;">
+            <label style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.03em;display:block;margin-bottom:8px;">Победители</label>
+            <p style="font-size:12px;color:#64748b;margin:0 0 12px;">Сколько угодно строк. Если в турнире несколько категорий — задайте поле «Категория», и на сайте подиум сгруппируется по ним.</p>
+            <div id="winners-container">${winnersHtml}</div>
+            <button type="button" class="stage-add-btn" data-action="add-winner">&#43; Добавить победителя</button>
+
+            <template id="winner-template">
+              <div class="winner-row" style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:8px;background:#fff;">
+                <div style="display:grid;grid-template-columns:80px 1fr 1fr auto;gap:8px;align-items:center;">
+                  <input data-field="place" type="number" min="1" placeholder="Место" style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;text-align:center;font-weight:700;" />
+                  <input data-field="name" placeholder="Имя победителя *" maxlength="200" style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;" />
+                  <input data-field="category" placeholder="Категория (U-12, Девочки, ...)" maxlength="120" style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;" />
+                  <button type="button" data-action="remove-winner" style="color:#dc2626;background:none;border:none;cursor:pointer;font-size:20px;">&#215;</button>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;">
+                  <input data-field="club" placeholder="Клуб/школа (опц.)" maxlength="200" style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;" />
+                  <input data-field="note" placeholder="Примечание (опц.)" maxlength="500" style="padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;" />
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+                  <div data-current-photo style="width:48px;height:48px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:18px;color:#94a3b8;">&#128100;</div>
+                  <input data-field="existing-photo" type="hidden" value="" />
+                  <input data-field="photo" type="file" accept="image/*" style="font-size:12px;flex:1;" />
+                  <span style="font-size:11px;color:#94a3b8;">Фото опц.</span>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <div>
+            <label style="font-size:12px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:0.03em;display:block;margin-bottom:8px;">Галерея</label>
+            <p style="font-size:12px;color:#64748b;margin:0 0 12px;">Фотографии с турнира. Подпись опциональна.</p>
+            <div id="gallery-container" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;">${galleryHtml}</div>
+            <button type="button" class="stage-add-btn" data-action="add-gallery" style="margin-top:12px;">&#43; Добавить фото</button>
+
+            <template id="gallery-template">
+              <div class="gallery-row" style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#fff;">
+                <input data-field="existing-url" type="hidden" value="" />
+                <input data-field="photo" type="file" accept="image/*" style="font-size:12px;width:100%;margin-bottom:6px;" />
+                <input data-field="caption" placeholder="Подпись (опц.)" maxlength="300" style="padding:6px 10px;border:1.5px solid #e2e8f0;border-radius:6px;font-size:13px;font-family:inherit;width:100%;" />
+                <button type="button" data-action="remove-gallery" style="margin-top:6px;width:100%;color:#dc2626;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;cursor:pointer;font-size:12px;padding:4px;">Удалить</button>
+              </div>
+            </template>
+          </div>
+        </fieldset>
+
+        <fieldset>
           <legend>Видимость и порядок</legend>
           <div class="form-grid">
             <div class="form-group">
@@ -528,6 +666,77 @@ export function tournamentFormPage(
   isFreeCb.addEventListener('change', togglePayment);
   methodSel.addEventListener('change', togglePayment);
   togglePayment();
+
+  // ── Winners ──
+  const winnersContainer = document.getElementById('winners-container');
+  const winnerTpl = document.getElementById('winner-template');
+
+  function reindexWinners() {
+    winnersContainer.querySelectorAll('.winner-row').forEach((row, i) => {
+      row.dataset.idx = String(i);
+      row.querySelectorAll('[data-field]').forEach((el) => {
+        const f = el.dataset.field;
+        if (f === 'photo') {
+          el.setAttribute('name', 'winner_photo_' + i);
+        } else if (f === 'existing-photo') {
+          el.setAttribute('name', 'winners[' + i + '][existingPhoto]');
+        } else {
+          el.setAttribute('name', 'winners[' + i + '][' + f + ']');
+        }
+      });
+    });
+  }
+  reindexWinners();
+
+  document.querySelector('[data-action="add-winner"]').addEventListener('click', () => {
+    const node = winnerTpl.content.firstElementChild.cloneNode(true);
+    const nextPlace = winnersContainer.querySelectorAll('.winner-row').length + 1;
+    const placeInput = node.querySelector('[data-field="place"]');
+    if (placeInput) placeInput.value = String(nextPlace);
+    winnersContainer.appendChild(node);
+    reindexWinners();
+  });
+
+  winnersContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="remove-winner"]');
+    if (!btn) return;
+    btn.closest('.winner-row').remove();
+    reindexWinners();
+  });
+
+  // ── Gallery ──
+  const galleryContainer = document.getElementById('gallery-container');
+  const galleryTpl = document.getElementById('gallery-template');
+
+  function reindexGallery() {
+    galleryContainer.querySelectorAll('.gallery-row').forEach((row, i) => {
+      row.dataset.idx = String(i);
+      row.querySelectorAll('[data-field]').forEach((el) => {
+        const f = el.dataset.field;
+        if (f === 'photo') {
+          el.setAttribute('name', 'gallery_photo_' + i);
+        } else if (f === 'existing-url') {
+          el.setAttribute('name', 'gallery[' + i + '][existingUrl]');
+        } else {
+          el.setAttribute('name', 'gallery[' + i + '][' + f + ']');
+        }
+      });
+    });
+  }
+  reindexGallery();
+
+  document.querySelector('[data-action="add-gallery"]').addEventListener('click', () => {
+    const node = galleryTpl.content.firstElementChild.cloneNode(true);
+    galleryContainer.appendChild(node);
+    reindexGallery();
+  });
+
+  galleryContainer.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action="remove-gallery"]');
+    if (!btn) return;
+    btn.closest('.gallery-row').remove();
+    reindexGallery();
+  });
 
   // ── Image previews ──
   ${imagePreviewScript('banner', 'tournament-banner-preview')}
