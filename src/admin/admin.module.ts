@@ -5,6 +5,7 @@ import { NewsModule } from '../news/news.module';
 import { ClubsModule } from '../clubs/clubs.module';
 import { TournamentsModule } from '../tournaments/tournaments.module';
 import { TournamentRegistrationsModule } from '../tournament-registrations/tournament-registrations.module';
+import { AttestationModule } from '../attestation/attestation.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { TournamentRegistrationsModule } from '../tournament-registrations/tourn
     ClubsModule,
     TournamentsModule,
     TournamentRegistrationsModule,
+    AttestationModule,
   ],
   controllers: [AdminController],
 })

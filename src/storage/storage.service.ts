@@ -33,6 +33,7 @@ const BUCKETS = {
   tournaments: 'tournaments',
   receipts: 'receipts',
   attachments: 'attachments',
+  attestation: 'attestation',
 } as const;
 
 type BucketKey = keyof typeof BUCKETS;
@@ -55,14 +56,20 @@ export class StorageService implements OnModuleInit {
     await this.ensureBucket(BUCKETS.tournaments, IMAGE_MIMES);
     await this.ensureBucket(BUCKETS.receipts, RECEIPT_MIMES);
     await this.ensureBucket(BUCKETS.attachments, ATTACH_MIMES);
+    // Scanned PDFs are big; 50 MB is the Supabase free-plan ceiling
+    await this.ensureBucket(BUCKETS.attestation, ATTACH_MIMES, 50 * 1024 * 1024);
   }
 
-  private async ensureBucket(name: string, mimes: string[]) {
+  private async ensureBucket(
+    name: string,
+    mimes: string[],
+    fileSizeLimit = 10 * 1024 * 1024,
+  ) {
     const { data: buckets } = await this.supabase.storage.listBuckets();
     if (buckets?.some((b) => b.name === name)) return;
     const { error } = await this.supabase.storage.createBucket(name, {
       public: true,
-      fileSizeLimit: 10 * 1024 * 1024,
+      fileSizeLimit,
       allowedMimeTypes: mimes,
     });
     if (error) this.logger.error(`Bucket "${name}" create failed: ${error.message}`);
@@ -137,5 +144,8 @@ export class StorageService implements OnModuleInit {
   }
   uploadTournamentGalleryPhoto(file: Express.Multer.File) {
     return this.uploadTo('tournaments', file, 'gallery/');
+  }
+  uploadAttestationFile(file: Express.Multer.File) {
+    return this.uploadTo('attestation', file);
   }
 }

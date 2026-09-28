@@ -190,3 +190,33 @@ model TournamentRegistration {
   @@index([tournamentId, status])
   @@index([createdAt])
 }
+
+model AttestationSection {
+  id        Int                  @id @default(autoincrement())
+  slug      String               @unique
+  parentId  Int?
+  parent    AttestationSection?  @relation("AttestationTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children  AttestationSection[] @relation("AttestationTree")
+  titleKk   String
+  titleRu   String
+  titleEn   String
+  isActive  Boolean              @default(true)
+  order     Int                  @default(0)
+  files     AttestationFile[]
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  @@index([parentId, order])
+}
+
+model AttestationFile {
+  id        Int                @id @default(autoincrement())
+  sectionId Int
+  section   AttestationSection @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  title     String
+  url       String
+  order     Int                @default(0)
+  createdAt DateTime           @default(now())
+
+  @@index([sectionId, order])
+}

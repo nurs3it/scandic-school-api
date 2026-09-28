@@ -463,7 +463,8 @@ export type SidebarPage =
   | 'contacts'
   | 'clubs'
   | 'tournaments'
-  | 'tournament-registrations';
+  | 'tournament-registrations'
+  | 'attestation';
 
 function sidebarHtml(active: SidebarPage) {
   return `
@@ -493,6 +494,7 @@ function sidebarHtml(active: SidebarPage) {
         <div class="nav-section-title">Контент</div>
         <a href="/admin/news" class="nav-item ${active === 'news' ? 'active' : ''}">&#128240; Новости</a>
         <a href="/admin/instagram" class="nav-item ${active === 'instagram' ? 'active' : ''}">&#128248; Instagram посты</a>
+        <a href="/admin/attestation" class="nav-item ${active === 'attestation' ? 'active' : ''}">&#128193; Аттестация</a>
       </div>
       <div class="nav-section">
         <div class="nav-section-title">Магазин</div>

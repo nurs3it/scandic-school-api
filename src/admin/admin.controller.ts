@@ -16,6 +16,7 @@ import {
 import {
   FileInterceptor,
   FileFieldsInterceptor,
+  FilesInterceptor,
   AnyFilesInterceptor,
 } from '@nestjs/platform-express';
 import { ApiExcludeController } from '@nestjs/swagger';
@@ -27,6 +28,7 @@ import { NewsService } from '../news/news.service';
 import { ClubsService } from '../clubs/clubs.service';
 import { TournamentsService } from '../tournaments/tournaments.service';
 import { TournamentRegistrationsService } from '../tournament-registrations/tournament-registrations.service';
+import { AttestationService, SectionInput } from '../attestation/attestation.service';
 import {
   buildPdf,
   buildTxt,
@@ -59,6 +61,10 @@ import {
   registrationsListPage,
   registrationDetailPage,
 } from './templates/registrations.templates';
+import {
+  attestationListPage,
+  attestationFormPage,
+} from './templates/attestation.templates';
 
 // ─── File upload config (memory buffer → Supabase Storage) ────────────────────
 
@@ -126,6 +132,11 @@ const attachUploadConfig = {
   fileFilter: attachFileFilter,
 };
 
+const attestationUploadConfig = {
+  ...attachUploadConfig,
+  limits: { fileSize: 50 * 1024 * 1024 },
+};
+
 // ─── Auth constants ───────────────────────────────────────────────────────────
 
 const ADMIN_USER = process.env.ADMIN_USER || 'admin';
@@ -143,6 +154,7 @@ export class AdminController {
     private readonly clubs: ClubsService,
     private readonly tournaments: TournamentsService,
     private readonly registrations: TournamentRegistrationsService,
+    private readonly attestation: AttestationService,
   ) {}
 
   // ── Auth (no guard — these handle their own auth) ───────────────────────────
@@ -926,6 +938,135 @@ export class AdminController {
   async clubDelete(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     await this.clubs.remove(id);
     return res.redirect('/admin/clubs?deleted=1');
+  }
+
+  // ── Attestation ─────────────────────────────────────────────────────────────
+
+  private parseSectionBody(body: any): SectionInput {
+    return {
+      titleRu: String(body.titleRu ?? '').trim(),
+      titleKk: String(body.titleKk ?? '').trim(),
+      titleEn: String(body.titleEn ?? '').trim(),
+      parentId: body.parentId ? parseInt(body.parentId, 10) : null,
+      slug: body.slug?.trim() || undefined,
+      isActive: body.isActive === '1',
+      order: body.order ? parseInt(body.order, 10) : 0,
+    };
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('attestation')
+  async attestationList(@Req() req: Request, @Res() res: Response) {
+    const rows = await this.attestation.findAllAdmin();
+    const flash =
+      req.query.added ? 'Раздел создан' :
+      req.query.updated ? 'Раздел обновлён' :
+      req.query.deleted ? 'Раздел удалён' : undefined;
+    return res.send(attestationListPage(rows, flash));
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('attestation/new')
+  async attestationNew(@Req() req: Request, @Res() res: Response) {
+    const sections = await this.attestation.findAllAdmin();
+    const parentId = req.query.parentId ? parseInt(String(req.query.parentId), 10) : null;
+    return res.send(attestationFormPage({ mode: 'create', sections, parentId }));
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('attestation')
+  async attestationCreate(@Body() body: any, @Res() res: Response) {
+    const input = this.parseSectionBody(body);
+    try {
+      const created = await this.attestation.create(input);
+      return res.redirect(`/admin/attestation/${created.id}/edit?added=1`);
+    } catch (e: any) {
+      const sections = await this.attestation.findAllAdmin();
+      return res.send(
+        attestationFormPage({ mode: 'create', sections, parentId: input.parentId, error: e.message }),
+      );
+    }
+  }
+
+  @UseGuards(AdminGuard)
+  @Get('attestation/:id/edit')
+  async attestationEdit(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const [section, sections] = await Promise.all([
+      this.attestation.findById(id),
+      this.attestation.findAllAdmin(),
+    ]);
+    const flash =
+      req.query.added ? 'Раздел создан — теперь можно загрузить файлы' :
+      req.query.uploaded ? 'Файлы загружены' :
+      req.query.fileDeleted ? 'Файл удалён' : undefined;
+    return res.send(attestationFormPage({ mode: 'edit', sections, section, flash }));
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('attestation/:id')
+  async attestationUpdate(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: any,
+    @Res() res: Response,
+  ) {
+    try {
+      await this.attestation.update(id, this.parseSectionBody(body));
+      return res.redirect('/admin/attestation?updated=1');
+    } catch (e: any) {
+      const [section, sections] = await Promise.all([
+        this.attestation.findById(id),
+        this.attestation.findAllAdmin(),
+      ]);
+      return res.send(attestationFormPage({ mode: 'edit', sections, section, error: e.message }));
+    }
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('attestation/:id/delete')
+  async attestationDelete(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    await this.attestation.remove(id);
+    return res.redirect('/admin/attestation?deleted=1');
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('attestation/:id/files')
+  @UseInterceptors(FilesInterceptor('files', 30, attestationUploadConfig))
+  async attestationUpload(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFiles() files: Express.Multer.File[],
+    @Res() res: Response,
+  ) {
+    const section = await this.attestation.findById(id);
+    try {
+      if (!files?.length) throw new Error('Выберите файлы');
+      const uploaded = await Promise.all(
+        files.map(async (f) => {
+          // multer decodes multipart filenames as latin1; restore UTF-8 (Cyrillic names)
+          const name = Buffer.from(f.originalname, 'latin1').toString('utf8');
+          const url = await this.storage.uploadAttestationFile(f);
+          return { title: name.replace(/\.[^.]+$/, ''), url };
+        }),
+      );
+      await this.attestation.addFiles(id, uploaded);
+      return res.redirect(`/admin/attestation/${id}/edit?uploaded=1`);
+    } catch (e: any) {
+      const sections = await this.attestation.findAllAdmin();
+      return res.send(attestationFormPage({ mode: 'edit', sections, section, error: e.message }));
+    }
+  }
+
+  @UseGuards(AdminGuard)
+  @Post('attestation/files/:fileId/delete')
+  async attestationFileDelete(
+    @Param('fileId', ParseIntPipe) fileId: number,
+    @Res() res: Response,
+  ) {
+    const file = await this.attestation.removeFile(fileId);
+    return res.redirect(`/admin/attestation/${file.sectionId}/edit?fileDeleted=1`);
   }
 
   // ── Tournaments ─────────────────────────────────────────────────────────────
