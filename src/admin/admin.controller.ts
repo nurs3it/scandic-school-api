@@ -112,6 +112,7 @@ const ALLOWED_ATTACH_MIME_TYPES = [
   'application/x-zip-compressed',
   'text/plain',
   'text/csv',
+  'video/mp4',
 ];
 
 function attachFileFilter(
@@ -126,16 +127,14 @@ function attachFileFilter(
   }
 }
 
+// 50 MB: news attaches may be mp4 videos
 const attachUploadConfig = {
   storage: memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: attachFileFilter,
 };
 
-const attestationUploadConfig = {
-  ...attachUploadConfig,
-  limits: { fileSize: 50 * 1024 * 1024 },
-};
+const attestationUploadConfig = attachUploadConfig;
 
 // ─── Auth constants ───────────────────────────────────────────────────────────
 
