@@ -25,6 +25,7 @@ const ATTACH_MIMES = [
   'application/x-zip-compressed',
   'text/plain',
   'text/csv',
+  'video/mp4',
 ];
 
 const BUCKETS = {
@@ -55,7 +56,7 @@ export class StorageService implements OnModuleInit {
     await this.ensureBucket(BUCKETS.clubs, IMAGE_MIMES);
     await this.ensureBucket(BUCKETS.tournaments, IMAGE_MIMES);
     await this.ensureBucket(BUCKETS.receipts, RECEIPT_MIMES);
-    await this.ensureBucket(BUCKETS.attachments, ATTACH_MIMES);
+    await this.ensureBucket(BUCKETS.attachments, ATTACH_MIMES, 50 * 1024 * 1024);
     // Scanned PDFs are big; 50 MB is the Supabase free-plan ceiling
     await this.ensureBucket(BUCKETS.attestation, ATTACH_MIMES, 50 * 1024 * 1024);
   }
@@ -66,14 +67,14 @@ export class StorageService implements OnModuleInit {
     fileSizeLimit = 10 * 1024 * 1024,
   ) {
     const { data: buckets } = await this.supabase.storage.listBuckets();
-    if (buckets?.some((b) => b.name === name)) return;
-    const { error } = await this.supabase.storage.createBucket(name, {
-      public: true,
-      fileSizeLimit,
-      allowedMimeTypes: mimes,
-    });
-    if (error) this.logger.error(`Bucket "${name}" create failed: ${error.message}`);
-    else this.logger.log(`Bucket "${name}" created`);
+    const opts = { public: true, fileSizeLimit, allowedMimeTypes: mimes };
+    // Existing buckets are synced too, so mime/size changes here reach Supabase
+    const exists = buckets?.some((b) => b.name === name);
+    const { error } = exists
+      ? await this.supabase.storage.updateBucket(name, opts)
+      : await this.supabase.storage.createBucket(name, opts);
+    if (error) this.logger.error(`Bucket "${name}" sync failed: ${error.message}`);
+    else if (!exists) this.logger.log(`Bucket "${name}" created`);
   }
 
   private async uploadTo(
