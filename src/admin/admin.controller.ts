@@ -1025,6 +1025,17 @@ export class AdminController {
   }
 
   @UseGuards(AdminGuard)
+  @Post('attestation/:id/move')
+  async attestationMove(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { dir?: string },
+    @Res() res: Response,
+  ) {
+    await this.attestation.move(id, body.dir === 'up' ? 'up' : 'down');
+    return res.redirect('/admin/attestation');
+  }
+
+  @UseGuards(AdminGuard)
   @Post('attestation/:id/delete')
   async attestationDelete(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     await this.attestation.remove(id);

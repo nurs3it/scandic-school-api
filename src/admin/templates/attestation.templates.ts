@@ -48,6 +48,13 @@ const STYLES = `
   .file-row a.file-link { flex: 1; color: #0f172a; font-size: 14px; text-decoration: none; }
   .file-row a.file-link:hover { color: #e8890a; }
   .ext { font-size: 11px; font-weight: 700; color: #64748b; background: #f1f5f9; border-radius: 6px; padding: 3px 8px; }
+  .tgl {
+    width: 20px; height: 20px; margin-right: 6px; padding: 0;
+    border: 1.5px solid #e2e8f0; border-radius: 6px; background: #fff;
+    font-size: 10px; line-height: 1; color: #64748b; cursor: pointer; vertical-align: middle;
+  }
+  .tgl:hover { border-color: #f4a724; background: #fffbeb; }
+  .tgl-spacer { display: inline-block; width: 26px; }
   @media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } }
 `;
 
@@ -58,19 +65,41 @@ function fileExt(url: string) {
 // ─── Sections tree ────────────────────────────────────────────────────────────
 
 export function attestationListPage(rows: AdminRow[], flash?: string): string {
+  const siblings = new Map<number | null, number[]>();
+  for (const r of rows) {
+    const list = siblings.get(r.parentId) ?? [];
+    list.push(r.id);
+    siblings.set(r.parentId, list);
+  }
+
   const tr = rows
     .map((r) => {
       const activeBg = r.isActive ? '#dcfce7' : '#f1f5f9';
       const activeColor = r.isActive ? '#166534' : '#64748b';
+      const group = siblings.get(r.parentId) ?? [];
+      const i = group.indexOf(r.id);
+      const hasKids = siblings.has(r.id);
+      const moveBtn = (dir: 'up' | 'down', label: string, disabled: boolean) =>
+        disabled
+          ? `<button type="button" class="tbl-btn" disabled style="opacity:.3;cursor:default;">${label}</button>`
+          : `<form method="POST" action="/admin/attestation/${r.id}/move" style="display:inline;">
+               <input type="hidden" name="dir" value="${dir}" />
+               <button type="submit" class="tbl-btn" title="${dir === 'up' ? 'Выше' : 'Ниже'}">${label}</button>
+             </form>`;
+      const toggle = hasKids
+        ? `<button type="button" class="tgl" data-toggle="${r.id}" title="Свернуть / развернуть">&#9662;</button>`
+        : '<span class="tgl-spacer"></span>';
       return `
-      <tr>
+      <tr data-id="${r.id}" data-parent="${r.parentId ?? ''}">
         <td style="padding-left:${16 + r.depth * 24}px;">
-          ${r.depth ? '<span class="sub">&#8627;</span> ' : ''}<span class="name">${escHtml(r.titleRu)}</span>
-          <br/><span class="sub">${escHtml(r.titleKk)}</span>
+          ${toggle}${r.depth ? '<span class="sub">&#8627;</span> ' : ''}<span class="name">${escHtml(r.titleRu)}</span>
+          <br/><span class="sub" style="margin-left:26px;">${escHtml(r.titleKk)}</span>
         </td>
         <td style="font-size:13px;color:#64748b;">${r._count.files}</td>
         <td><span class="badge" style="background:${activeBg};color:${activeColor};">${r.isActive ? 'Виден' : 'Скрыт'}</span></td>
-        <td style="font-size:13px;color:#64748b;">${r.order}</td>
+        <td style="white-space:nowrap;">
+          ${moveBtn('up', '&#9650;', i <= 0)}${moveBtn('down', '&#9660;', i === group.length - 1)}
+        </td>
         <td style="white-space:nowrap;">
           <a href="/admin/attestation/${r.id}/edit" class="tbl-btn">&#9998; Изменить</a>
           <a href="/admin/attestation/new?parentId=${r.id}" class="tbl-btn">&#43; Подраздел</a>
@@ -102,6 +131,10 @@ export function attestationListPage(rows: AdminRow[], flash?: string): string {
     <div class="table-card">
       <div class="table-header">
         <h3>Разделы <span class="count-badge">${rows.length}</span></h3>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="tbl-btn" id="collapse-all">Свернуть все</button>
+          <button type="button" class="tbl-btn" id="expand-all">Развернуть все</button>
+        </div>
       </div>
       ${
         rows.length === 0
@@ -112,13 +145,67 @@ export function attestationListPage(rows: AdminRow[], flash?: string): string {
         <thead>
           <tr><th>Название</th><th>Файлов</th><th>Статус</th><th>Порядок</th><th>Действия</th></tr>
         </thead>
-        <tbody>${tr}</tbody>
+        <tbody id="attestation-tbody">${tr}</tbody>
       </table>
       </div>`
       }
-    </div>`;
+    </div>
+    ${collapseScript()}`;
 
   return pageShell('Аттестация', 'attestation', STYLES, body);
+}
+
+// ponytail: collapsed ids live in localStorage — no server state for a view preference
+function collapseScript() {
+  return `
+<script>
+(function() {
+  var tbody = document.getElementById('attestation-tbody');
+  if (!tbody) return;
+  var KEY = 'attestation-collapsed';
+  var collapsed = new Set();
+  try { collapsed = new Set(JSON.parse(localStorage.getItem(KEY) || '[]')); } catch (e) {}
+
+  var rows = Array.from(tbody.querySelectorAll('tr[data-id]'));
+  var parentOf = {};
+  rows.forEach(function(r) { parentOf[r.getAttribute('data-id')] = r.getAttribute('data-parent'); });
+
+  function hiddenByAncestor(id) {
+    for (var p = parentOf[id]; p; p = parentOf[p]) if (collapsed.has(p)) return true;
+    return false;
+  }
+
+  function render() {
+    rows.forEach(function(r) {
+      var id = r.getAttribute('data-id');
+      r.style.display = hiddenByAncestor(id) ? 'none' : '';
+      var btn = r.querySelector('[data-toggle]');
+      if (btn) btn.innerHTML = collapsed.has(id) ? '&#9656;' : '&#9662;';
+    });
+    try { localStorage.setItem(KEY, JSON.stringify(Array.from(collapsed))); } catch (e) {}
+  }
+
+  tbody.addEventListener('click', function(e) {
+    var btn = e.target.closest('[data-toggle]');
+    if (!btn) return;
+    var id = btn.getAttribute('data-toggle');
+    if (collapsed.has(id)) collapsed.delete(id); else collapsed.add(id);
+    render();
+  });
+
+  var all = document.getElementById('collapse-all');
+  if (all) all.addEventListener('click', function() {
+    rows.forEach(function(r) {
+      if (r.querySelector('[data-toggle]')) collapsed.add(r.getAttribute('data-id'));
+    });
+    render();
+  });
+  var none = document.getElementById('expand-all');
+  if (none) none.addEventListener('click', function() { collapsed.clear(); render(); });
+
+  render();
+})();
+</script>`;
 }
 
 // ─── Section form (new / edit) + files ────────────────────────────────────────

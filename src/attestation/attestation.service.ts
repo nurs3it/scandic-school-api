@@ -132,6 +132,28 @@ export class AttestationService {
     });
   }
 
+  /** Swap a section with its previous/next sibling, renumbering the whole sibling group. */
+  async move(id: number, dir: 'up' | 'down') {
+    const section = await this.findById(id);
+    const siblings = await this.prisma.attestationSection.findMany({
+      where: { parentId: section.parentId },
+      orderBy: [{ order: 'asc' }, { id: 'asc' }],
+      select: { id: true },
+    });
+    const i = siblings.findIndex((s) => s.id === id);
+    const j = dir === 'up' ? i - 1 : i + 1;
+    if (i < 0 || j < 0 || j >= siblings.length) return;
+    [siblings[i], siblings[j]] = [siblings[j], siblings[i]];
+    await this.prisma.$transaction(
+      siblings.map((s, order) =>
+        this.prisma.attestationSection.update({
+          where: { id: s.id },
+          data: { order },
+        }),
+      ),
+    );
+  }
+
   async remove(id: number) {
     await this.findById(id);
     await this.prisma.attestationSection.delete({ where: { id } });
