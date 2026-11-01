@@ -1070,17 +1070,15 @@ export class AdminController {
   }
 
   @UseGuards(AdminGuard)
-  @Post('attestation/files/:fileId/move')
-  async attestationFileMove(
-    @Param('fileId', ParseIntPipe) fileId: number,
-    @Body() body: { dir?: string },
+  @Post('attestation/:id/files/reorder')
+  async attestationFilesReorder(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { ids?: string },
     @Res() res: Response,
   ) {
-    const sectionId = await this.attestation.moveFile(
-      fileId,
-      body.dir === 'up' ? 'up' : 'down',
-    );
-    return res.redirect(`/admin/attestation/${sectionId}/edit`);
+    const ids = (body.ids || '').split(',').map(Number).filter(Boolean);
+    await this.attestation.reorderFiles(id, ids);
+    return res.redirect(`/admin/attestation/${id}/edit`);
   }
 
   @UseGuards(AdminGuard)

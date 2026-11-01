@@ -576,7 +576,7 @@ function deleteModalScript(formActionPrefix: string) {
 
 // ─── Drag-reorder script (shared) ─────────────────────────────────────────────
 
-function dragReorderScript(tbodyId: string, formAction: string) {
+export function dragReorderScript(tbodyId: string, formAction: string) {
   return `
 <form id="reorder-form" method="POST" action="${formAction}" style="display:none;">
   <input type="hidden" id="reorder-ids" name="ids" />

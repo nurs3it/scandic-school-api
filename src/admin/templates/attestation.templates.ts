@@ -1,4 +1,9 @@
-import { escHtml, pageShell, flashHtml } from '../admin.templates';
+import {
+  escHtml,
+  pageShell,
+  flashHtml,
+  dragReorderScript,
+} from '../admin.templates';
 import type { AttestationFile, AttestationSection } from '@prisma/client';
 
 type AdminRow = AttestationSection & {
@@ -44,9 +49,11 @@ const STYLES = `
     border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer;
   }
   .cancel-link { padding: 12px 20px; background: #f1f5f9; border-radius: 10px; font-size: 14px; font-weight: 600; color: #374151; text-decoration: none; }
-  .file-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
-  .file-row a.file-link { flex: 1; color: #0f172a; font-size: 14px; text-decoration: none; }
-  .file-row a.file-link:hover { color: #e8890a; }
+  .files-tbl { width: 100%; border-collapse: collapse; }
+  .files-tbl td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .files-tbl td:first-child { padding-left: 0; }
+  a.file-link { color: #0f172a; font-size: 14px; text-decoration: none; }
+  a.file-link:hover { color: #e8890a; }
   .ext { font-size: 11px; font-weight: 700; color: #64748b; background: #f1f5f9; border-radius: 6px; padding: 3px 8px; }
   .tgl {
     width: 20px; height: 20px; margin-right: 6px; padding: 0;
@@ -249,32 +256,28 @@ export function attestationFormPage(opts: {
       <h3>Файлы <span class="count-badge">${section.files.length}</span></h3>
       ${
         section.files.length
-          ? section.files
-              .map((f, i) => {
-                const moveBtn = (
-                  dir: 'up' | 'down',
-                  label: string,
-                  disabled: boolean,
-                ) =>
-                  disabled
-                    ? `<button type="button" class="tbl-btn" disabled style="opacity:.3;cursor:default;">${label}</button>`
-                    : `<form method="POST" action="/admin/attestation/files/${f.id}/move" style="display:inline;margin:0;">
-                         <input type="hidden" name="dir" value="${dir}" />
-                         <button type="submit" class="tbl-btn" title="${dir === 'up' ? 'Выше' : 'Ниже'}">${label}</button>
-                       </form>`;
-                return `
-        <div class="file-row">
-          <span class="ext">${fileExt(f.url)}</span>
-          <a class="file-link" href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.title)}</a>
-          <span style="white-space:nowrap;">
-            ${moveBtn('up', '&#9650;', i === 0)}${moveBtn('down', '&#9660;', i === section.files.length - 1)}
-          </span>
-          <form method="POST" action="/admin/attestation/files/${f.id}/delete" style="margin:0;" onsubmit="return confirm('Удалить файл?');">
-            <button type="submit" class="tbl-btn tbl-del">&#215; Удалить</button>
-          </form>
-        </div>`;
-              })
-              .join('')
+          ? `
+      <p class="hint-text" style="margin-bottom:8px;">Перетащите строку за &#8942;&#8942;, чтобы изменить порядок.</p>
+      <table class="files-tbl">
+        <tbody id="files-tbody">
+          ${section.files
+            .map(
+              (f) => `
+          <tr draggable="true" data-id="${f.id}">
+            <td style="width:28px;"><span class="drag-handle">&#8942;&#8942;</span></td>
+            <td style="width:52px;"><span class="ext">${fileExt(f.url)}</span></td>
+            <td><a class="file-link" href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.title)}</a></td>
+            <td style="width:1%;white-space:nowrap;">
+              <form method="POST" action="/admin/attestation/files/${f.id}/delete" style="margin:0;" onsubmit="return confirm('Удалить файл?');">
+                <button type="submit" class="tbl-btn tbl-del">&#215; Удалить</button>
+              </form>
+            </td>
+          </tr>`,
+            )
+            .join('')}
+        </tbody>
+      </table>
+      ${dragReorderScript('files-tbody', `/admin/attestation/${section.id}/files/reorder`)}`
           : '<p class="hint-text">Файлов пока нет.</p>'
       }
       <form method="POST" action="/admin/attestation/${section.id}/files" enctype="multipart/form-data" style="margin-top:20px;">
