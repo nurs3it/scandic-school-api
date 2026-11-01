@@ -250,16 +250,30 @@ export function attestationFormPage(opts: {
       ${
         section.files.length
           ? section.files
-              .map(
-                (f) => `
+              .map((f, i) => {
+                const moveBtn = (
+                  dir: 'up' | 'down',
+                  label: string,
+                  disabled: boolean,
+                ) =>
+                  disabled
+                    ? `<button type="button" class="tbl-btn" disabled style="opacity:.3;cursor:default;">${label}</button>`
+                    : `<form method="POST" action="/admin/attestation/files/${f.id}/move" style="display:inline;margin:0;">
+                         <input type="hidden" name="dir" value="${dir}" />
+                         <button type="submit" class="tbl-btn" title="${dir === 'up' ? 'Выше' : 'Ниже'}">${label}</button>
+                       </form>`;
+                return `
         <div class="file-row">
           <span class="ext">${fileExt(f.url)}</span>
           <a class="file-link" href="${escHtml(f.url)}" target="_blank" rel="noopener">${escHtml(f.title)}</a>
+          <span style="white-space:nowrap;">
+            ${moveBtn('up', '&#9650;', i === 0)}${moveBtn('down', '&#9660;', i === section.files.length - 1)}
+          </span>
           <form method="POST" action="/admin/attestation/files/${f.id}/delete" style="margin:0;" onsubmit="return confirm('Удалить файл?');">
             <button type="submit" class="tbl-btn tbl-del">&#215; Удалить</button>
           </form>
-        </div>`,
-              )
+        </div>`;
+              })
               .join('')
           : '<p class="hint-text">Файлов пока нет.</p>'
       }

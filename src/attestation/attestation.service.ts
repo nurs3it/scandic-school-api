@@ -170,6 +170,33 @@ export class AttestationService {
     });
   }
 
+  /** Swap a file with its previous/next neighbour in the same section. */
+  async moveFile(fileId: number, dir: 'up' | 'down') {
+    const file = await this.prisma.attestationFile.findUnique({
+      where: { id: fileId },
+      select: { sectionId: true },
+    });
+    if (!file) throw new NotFoundException(`File ${fileId} not found`);
+    const group = await this.prisma.attestationFile.findMany({
+      where: { sectionId: file.sectionId },
+      orderBy: [{ order: 'asc' }, { id: 'asc' }],
+      select: { id: true },
+    });
+    const i = group.findIndex((f) => f.id === fileId);
+    const j = dir === 'up' ? i - 1 : i + 1;
+    if (i < 0 || j < 0 || j >= group.length) return file.sectionId;
+    [group[i], group[j]] = [group[j], group[i]];
+    await this.prisma.$transaction(
+      group.map((f, order) =>
+        this.prisma.attestationFile.update({
+          where: { id: f.id },
+          data: { order },
+        }),
+      ),
+    );
+    return file.sectionId;
+  }
+
   async removeFile(fileId: number) {
     return this.prisma.attestationFile.delete({ where: { id: fileId } });
   }

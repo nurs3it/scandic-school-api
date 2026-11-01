@@ -1070,6 +1070,20 @@ export class AdminController {
   }
 
   @UseGuards(AdminGuard)
+  @Post('attestation/files/:fileId/move')
+  async attestationFileMove(
+    @Param('fileId', ParseIntPipe) fileId: number,
+    @Body() body: { dir?: string },
+    @Res() res: Response,
+  ) {
+    const sectionId = await this.attestation.moveFile(
+      fileId,
+      body.dir === 'up' ? 'up' : 'down',
+    );
+    return res.redirect(`/admin/attestation/${sectionId}/edit`);
+  }
+
+  @UseGuards(AdminGuard)
   @Post('attestation/files/:fileId/delete')
   async attestationFileDelete(
     @Param('fileId', ParseIntPipe) fileId: number,
