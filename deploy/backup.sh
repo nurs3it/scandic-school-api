@@ -5,7 +5,7 @@ set -euo pipefail
 cd /opt/scandic-school
 mkdir -p backups
 OUT="backups/scandic-$(date +%Y%m%d-%H%M%S).sql.gz"
-docker compose -f docker-compose.prod.yml exec -T db pg_dump -U scandic scandic | gzip > "$OUT.partial"
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T db pg_dump -U scandic scandic | gzip > "$OUT.partial"
 [ "$(stat -c%s "$OUT.partial")" -gt 1024 ] || { echo "backup too small" >&2; rm -f "$OUT.partial"; exit 1; }
 mv "$OUT.partial" "$OUT"
 find backups -name 'scandic-*.sql.gz' -mtime +7 -delete
