@@ -7,6 +7,7 @@ import {
 import slugify from 'slugify';
 import type { AttestationFile, AttestationSection } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { StorageService } from '../storage/storage.service';
 
 export interface SectionInput {
   titleKk: string;
@@ -25,11 +26,14 @@ export type SectionNode = AttestationSection & {
 
 @Injectable()
 export class AttestationService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly storage: StorageService,
+  ) {}
 
   /**
    * Stored keys are random (`1730000000-abc.pdf`), so a plain link downloads
-   * under that name. Supabase turns `?download=<name>` into a
+   * under that name. The files nginx turns `?download=<name>` into a
    * Content-Disposition header, which restores the uploaded filename.
    */
   private withFileName<T extends AttestationFile>(f: T): T {
@@ -202,6 +206,11 @@ export class AttestationService {
   }
 
   async removeFile(fileId: number) {
-    return this.prisma.attestationFile.delete({ where: { id: fileId } });
+    const file = await this.prisma.attestationFile.delete({
+      where: { id: fileId },
+    });
+    // Without this the file is never deleted (917 MB piled up on Supabase)
+    await this.storage.remove(file.url);
+    return file;
   }
 }

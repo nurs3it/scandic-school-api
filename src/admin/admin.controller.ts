@@ -66,7 +66,7 @@ import {
   attestationFormPage,
 } from './templates/attestation.templates';
 
-// ─── File upload config (memory buffer → Supabase Storage) ────────────────────
+// ─── File upload config (memory buffer → local disk, see StorageService) ────────────────────
 
 const ALLOWED_MIME_TYPES = [
   'image/jpeg',

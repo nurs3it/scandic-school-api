@@ -1,32 +1,5 @@
-import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-const IMAGE_MIMES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-  'image/gif',
-  'image/avif',
-];
-
-const RECEIPT_MIMES = [...IMAGE_MIMES, 'application/pdf'];
-
-const ATTACH_MIMES = [
-  ...IMAGE_MIMES,
-  'application/pdf',
-  'application/msword',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'application/vnd.ms-excel',
-  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  'application/vnd.ms-powerpoint',
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  'application/zip',
-  'application/x-zip-compressed',
-  'text/plain',
-  'text/csv',
-  'video/mp4',
-];
 
 const BUCKETS = {
   merch: 'merch-images',
@@ -39,42 +12,19 @@ const BUCKETS = {
 
 type BucketKey = keyof typeof BUCKETS;
 
+// Files live on the VPS: its nginx accepts WebDAV PUT/DELETE (basic auth) and
+// serves GET publicly. MIME and size checks happen in the multer configs.
 @Injectable()
-export class StorageService implements OnModuleInit {
-  private supabase: SupabaseClient;
+export class StorageService {
+  private readonly baseUrl: string;
+  private readonly auth: string;
   private readonly logger = new Logger(StorageService.name);
 
-  constructor(private readonly config: ConfigService) {
-    this.supabase = createClient(
-      this.config.getOrThrow<string>('SUPABASE_URL'),
-      this.config.getOrThrow<string>('SUPABASE_SERVICE_KEY'),
-    );
-  }
-
-  async onModuleInit() {
-    await this.ensureBucket(BUCKETS.merch, IMAGE_MIMES);
-    await this.ensureBucket(BUCKETS.clubs, IMAGE_MIMES);
-    await this.ensureBucket(BUCKETS.tournaments, IMAGE_MIMES);
-    await this.ensureBucket(BUCKETS.receipts, RECEIPT_MIMES);
-    await this.ensureBucket(BUCKETS.attachments, ATTACH_MIMES, 50 * 1024 * 1024);
-    // Scanned PDFs are big; 50 MB is the Supabase free-plan ceiling
-    await this.ensureBucket(BUCKETS.attestation, ATTACH_MIMES, 50 * 1024 * 1024);
-  }
-
-  private async ensureBucket(
-    name: string,
-    mimes: string[],
-    fileSizeLimit = 10 * 1024 * 1024,
-  ) {
-    const { data: buckets } = await this.supabase.storage.listBuckets();
-    const opts = { public: true, fileSizeLimit, allowedMimeTypes: mimes };
-    // Existing buckets are synced too, so mime/size changes here reach Supabase
-    const exists = buckets?.some((b) => b.name === name);
-    const { error } = exists
-      ? await this.supabase.storage.updateBucket(name, opts)
-      : await this.supabase.storage.createBucket(name, opts);
-    if (error) this.logger.error(`Bucket "${name}" sync failed: ${error.message}`);
-    else if (!exists) this.logger.log(`Bucket "${name}" created`);
+  constructor(config: ConfigService) {
+    this.baseUrl = config.getOrThrow<string>('FILES_URL').replace(/\/$/, '');
+    const user = config.getOrThrow<string>('FILES_USER');
+    const pass = config.getOrThrow<string>('FILES_PASS');
+    this.auth = 'Basic ' + Buffer.from(`${user}:${pass}`).toString('base64');
   }
 
   private async uploadTo(
@@ -83,17 +33,32 @@ export class StorageService implements OnModuleInit {
     prefix = '',
   ): Promise<string> {
     const ext = file.originalname.split('.').pop()?.toLowerCase() || 'bin';
-    const fileName = `${prefix}${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-    const bucket = BUCKETS[bucketKey];
-    const { error } = await this.supabase.storage
-      .from(bucket)
-      .upload(fileName, file.buffer, {
-        contentType: file.mimetype,
-        upsert: false,
+    const key = `${BUCKETS[bucketKey]}/${prefix}${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const url = `${this.baseUrl}/${key}`;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { Authorization: this.auth, 'Content-Type': file.mimetype },
+      body: new Uint8Array(file.buffer),
+    });
+    if (!res.ok) throw new Error(`Upload ${key} failed: HTTP ${res.status}`);
+    return url;
+  }
+
+  /**
+   * Deletes a file previously returned by uploadTo; foreign URLs are ignored.
+   * Never throws: the DB row is already gone, a leftover file is only logged.
+   */
+  async remove(url: string) {
+    if (!url.startsWith(`${this.baseUrl}/`)) return;
+    try {
+      const res = await fetch(url.split('?')[0], {
+        method: 'DELETE',
+        headers: { Authorization: this.auth },
       });
-    if (error) throw new Error(`Upload to ${bucket} failed: ${error.message}`);
-    const { data } = this.supabase.storage.from(bucket).getPublicUrl(fileName);
-    return data.publicUrl;
+      if (!res.ok && res.status !== 404) throw new Error(`HTTP ${res.status}`);
+    } catch (e) {
+      this.logger.warn(`Delete ${url} failed: ${(e as Error).message}`);
+    }
   }
 
   // Existing API (merch)

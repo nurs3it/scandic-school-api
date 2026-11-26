@@ -1,0 +1,28 @@
+# Postgres for the API on Render, on the gradeapp VPS (/opt/scandic-school).
+# Files are served by gradeapp's nginx, see deploy/nginx.conf.
+# Usage: docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: scandic
+      POSTGRES_USER: scandic
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    # Reachable from Render over the internet: TLS on, password auth only.
+    command: >
+      postgres -c ssl=on
+      -c ssl_cert_file=/certs/server.crt -c ssl_key_file=/certs/server.key
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./certs:/certs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scandic"]
+      interval: 10s
+      retries: 5
+
+volumes:
+  pg_data:
