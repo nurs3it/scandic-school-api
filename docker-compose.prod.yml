@@ -14,6 +14,8 @@ services:
     command: >
       postgres -c ssl=on
       -c ssl_cert_file=/certs/server.crt -c ssl_key_file=/certs/server.key
+    # pg_hba.conf in pg_data allows remote logins only via hostssl (edited by hand
+    # after init: sed 's/^host all all all/hostssl all all all/').
     ports:
       - "5432:5432"
     volumes:
